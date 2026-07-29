@@ -102,3 +102,7 @@ examples/         Console ANP demos
 docs/             Developer notes
 cmake/            Package config templates
 ```
+
+## License
+
+MIT License. See [LICENSE](LICENSE).
