@@ -98,7 +98,9 @@ landing page, published from `main` via GitHub Actions).
 **API reference:** [https://bamath.org/libanpcpp/api/](https://bamath.org/libanpcpp/api/)
 
 **Local build** requires [Doxygen](https://www.doxygen.org/) (e.g.
-`sudo apt install doxygen` on Ubuntu):
+`sudo apt install doxygen` on Ubuntu). With the default
+`ANPCPP_BUILD_DOCS=ON` (top-level builds), `cmake --build build` runs the
+same Doxygen pass as CI (`WARN_AS_ERROR`). Docs-only:
 
 ```bash
 cmake -S . -B build -DANPCPP_BUILD_DOCS=ON -DANPCPP_BUILD_TESTS=OFF -DANPCPP_BUILD_EXAMPLES=OFF

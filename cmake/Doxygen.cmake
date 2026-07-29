@@ -14,7 +14,7 @@ configure_file(
   @ONLY
 )
 
-add_custom_target(anpcpp_docs
+add_custom_target(anpcpp_docs ALL
   COMMAND "${DOXYGEN_EXECUTABLE}" "${DOXYGEN_OUTPUT_DIR}/Doxyfile"
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   COMMENT "Generating libanpcpp API documentation"
