@@ -117,12 +117,14 @@ public:
 
   /**
    * @brief Appends an alternative with a missing rating.
+   * @param name Alternative name to append.
    * @param ignore_existing If true, no-op when already present; else throws.
    */
   void add_alternative(const std::string& name, bool ignore_existing = false);
 
   /**
    * @brief Removes an alternative and its rating.
+   * @param name Alternative name to remove.
    * @param ignore_missing If true, no-op when absent; else throws.
    */
   void remove_alternative(const std::string& name,
@@ -154,6 +156,7 @@ public:
 
   /**
    * @brief Sets a categorical rating for @p alt.
+   * @param alt Alternative name.
    * @param category_id Must match a category id, or empty to clear.
    * @throws std::invalid_argument if alt or category id is unknown.
    */
