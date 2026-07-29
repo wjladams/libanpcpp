@@ -39,7 +39,9 @@ subdirectory / FetchContent dependency, tests and examples default to **OFF**.
 
 ### Examples
 
-Runnable demos land in `build/examples/`:
+Runnable demos land in `build/examples/`. A guided walkthrough of each demo is
+in [`docs/examples.md`](docs/examples.md) (also published with the
+[API documentation](https://bamath.org/libanpcpp/)).
 
 - `tree134` – goal / 3 criteria / 3 alternatives AHP hierarchy
 - `network23` – fully connected 2-cluster ANP network with feedback

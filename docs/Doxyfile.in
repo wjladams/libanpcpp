@@ -7,7 +7,8 @@ OUTPUT_DIRECTORY       = "@CMAKE_CURRENT_BINARY_DIR@/docs"
 CREATE_SUBDIRS         = NO
 
 INPUT                  = @CMAKE_CURRENT_SOURCE_DIR@/include/cppanp \
-                         @CMAKE_CURRENT_SOURCE_DIR@/docs/mainpage.md
+                         @CMAKE_CURRENT_SOURCE_DIR@/docs/mainpage.md \
+                         @CMAKE_CURRENT_SOURCE_DIR@/docs/examples.md
 RECURSIVE              = YES
 FILE_PATTERNS          = *.hpp *.md
 USE_MDFILE_AS_MAINPAGE = @CMAKE_CURRENT_SOURCE_DIR@/docs/mainpage.md

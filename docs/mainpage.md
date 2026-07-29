@@ -33,8 +33,8 @@ auto& goal = net.add_cluster("Goal");
 
 ## Examples
 
-Runnable console demos live in the `examples/` directory (`tree134`, `network23`,
-`hamburger_std`, `benefits_costs_subnet`).
+Runnable console demos live in the `examples/` directory. See the
+@ref examples "examples guide" for what each demo teaches and how to run it.
 
 ## Desktop application
 
