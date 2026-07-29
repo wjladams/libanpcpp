@@ -15,10 +15,10 @@
 #include <vector>
 
 #include "anp_print.hpp"
-#include "cppanp/network.hpp"
+#include "anpcpp/network.hpp"
 
-using namespace cppanp;
-using namespace cppanp::examples;
+using namespace anpcpp;
+using namespace anpcpp::examples;
 
 namespace {
 
@@ -295,7 +295,7 @@ int main() {
   std::cout << "\nSuperDecisions published synthesize (normalized by cluster):\n"
                "  McDonald's 0.5549   Burger King 0.2801   Wendy's 0.1650\n"
                "Actual 1994 market share: 0.5823 / 0.2857 / 0.1320\n";
-  std::cout << "cppanp result:\n";
+  std::cout << "anpcpp result:\n";
   for (std::size_t i = 0; i < alt.size(); ++i) {
     std::cout << "  " << names[i] << "  " << std::fixed << std::setprecision(4)
               << alt[i] << "\n";

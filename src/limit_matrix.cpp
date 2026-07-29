@@ -1,13 +1,13 @@
-#include "cppanp/limit_matrix.hpp"
+#include "anpcpp/limit_matrix.hpp"
 
-#include "cppanp/eigen.hpp"
+#include "anpcpp/eigen.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
 #include <vector>
 
-namespace cppanp {
+namespace anpcpp {
 namespace {
 
 [[nodiscard]] double matrix_max_abs(const Matrix& mat) {
@@ -224,4 +224,4 @@ Vector priority_from_limit(const Matrix& limit_matrix) {
   return rval;
 }
 
-}  // namespace cppanp
+}  // namespace anpcpp

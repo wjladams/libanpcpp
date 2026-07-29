@@ -14,10 +14,10 @@
 #include <iostream>
 
 #include "anp_print.hpp"
-#include "cppanp/network.hpp"
+#include "anpcpp/network.hpp"
 
-using namespace cppanp;
-using namespace cppanp::examples;
+using namespace anpcpp;
+using namespace anpcpp::examples;
 
 namespace {
 

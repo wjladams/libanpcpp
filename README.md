@@ -4,7 +4,7 @@ C++20 library for Analytic Network Process (ANP) models, pairwise judgments,
 supermatrices, limit-matrix calculations, synthesis (including subnetworks),
 and versioned JSON persistence.
 
-The public C++ API lives in namespace `cppanp` (headers under `include/cppanp/`).
+The public C++ API lives in namespace `anpcpp` (headers under `include/anpcpp/`).
 The CMake target is `anpcpp::anpcpp`. There is no Qt dependency.
 
 Numerical behavior is cross-checked against concepts from
@@ -19,7 +19,7 @@ Numerical behavior is cross-checked against concepts from
 - Unscaled / cluster-weighted / scaled supermatrices
 - Limit matrix (calculus method, with hierarchy short-circuit)
 - Recursive subnetworks with additive / multiplicative / custom synthesis
-- Versioned JSON save/load (`cppanp` format v1)
+- Versioned JSON save/load (`anpcpp` format v1)
 
 ## Build and test
 
@@ -118,13 +118,14 @@ cd docs/site && bundle install && bundle exec jekyll serve --baseurl /libanpcpp
 ## Desktop GUI
 
 The SuperDecisions-style Qt application lives in a separate repository,
-`cppanp`, which depends on this library via FetchContent (or a sibling
-`../libanpcpp` checkout during development).
+[ANP Studio](https://github.com/wjladams/anp-studio) (`anp-studio`), which
+depends on this library via FetchContent (or a sibling `../libanpcpp`
+checkout during development).
 
 ## Layout
 
 ```text
-include/cppanp/   Public headers
+include/anpcpp/   Public headers
 src/              Implementation
 tests/            GoogleTest suite
 examples/         Console ANP demos

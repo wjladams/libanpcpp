@@ -1,8 +1,8 @@
-#include "cppanp/pairwise.hpp"
+#include "anpcpp/pairwise.hpp"
 
 #include <gtest/gtest.h>
 
-using cppanp::PairwiseJudgments;
+using anpcpp::PairwiseJudgments;
 
 TEST(PairwiseTest, TwoThreeSixPriorities) {
   PairwiseJudgments pw({"A", "B", "C"});

@@ -1,9 +1,9 @@
-#include "cppanp/pairwise.hpp"
+#include "anpcpp/pairwise.hpp"
 
 #include <stdexcept>
 #include <utility>
 
-namespace cppanp {
+namespace anpcpp {
 
 PairwiseJudgments::PairwiseJudgments(std::vector<std::string> alternatives)
     : alternatives_(std::move(alternatives)) {
@@ -162,7 +162,7 @@ double PairwiseJudgments::consistency_ratio(ConsistencyOptions options) const {
     }
   }
   options.use_harker = has_zero || options.use_harker;
-  return cppanp::consistency_ratio(matrix_, options);
+  return anpcpp::consistency_ratio(matrix_, options);
 }
 
-}  // namespace cppanp
+}  // namespace anpcpp

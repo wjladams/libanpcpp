@@ -1,4 +1,4 @@
-#include "cppanp/json_io.hpp"
+#include "anpcpp/json_io.hpp"
 
 #include <fstream>
 #include <sstream>
@@ -6,7 +6,7 @@
 
 #include <nlohmann/json.hpp>
 
-namespace cppanp {
+namespace anpcpp {
 namespace {
 
 using json = nlohmann::json;
@@ -190,7 +190,7 @@ void populate_network(AnpNetwork& net, const json& j) {
 
 std::string network_to_json(const AnpNetwork& network) {
   json doc;
-  doc["format"] = "cppanp";
+  doc["format"] = "anpcpp";
   doc["version"] = 1;
   doc["network"] = network_to_json_obj(network);
   return doc.dump(2);
@@ -206,11 +206,11 @@ std::unique_ptr<AnpNetwork> network_from_json(const std::string& json_text) {
   if (!doc.contains("network")) {
     throw JsonIoError("missing 'network' object");
   }
-  if (doc.value("format", "") != "cppanp") {
-    throw JsonIoError("unsupported format (expected cppanp)");
+  if (doc.value("format", "") != "anpcpp") {
+    throw JsonIoError("unsupported format (expected anpcpp)");
   }
   if (doc.value("version", 1) != 1) {
-    throw JsonIoError("unsupported cppanp JSON version");
+    throw JsonIoError("unsupported anpcpp JSON version");
   }
 
   // Skip auto-creating "Alternatives" when the file already defines that cluster.
@@ -251,4 +251,4 @@ std::unique_ptr<AnpNetwork> load_network_file(const std::string& path) {
   return network_from_json(ss.str());
 }
 
-}  // namespace cppanp
+}  // namespace anpcpp

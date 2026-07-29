@@ -12,12 +12,12 @@
 #include <unordered_map>
 #include <vector>
 
-#include "cppanp/limit_matrix.hpp"
-#include "cppanp/matrix.hpp"
-#include "cppanp/pairwise.hpp"
-#include "cppanp/synthesis.hpp"
+#include "anpcpp/limit_matrix.hpp"
+#include "anpcpp/matrix.hpp"
+#include "anpcpp/pairwise.hpp"
+#include "anpcpp/synthesis.hpp"
 
-namespace cppanp {
+namespace anpcpp {
 
 class AnpNetwork;
 class AnpCluster;
@@ -364,4 +364,4 @@ private:
   std::map<std::string, std::pair<double, double>> node_positions_;
 };
 
-}  // namespace cppanp
+}  // namespace anpcpp

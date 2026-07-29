@@ -6,7 +6,7 @@ PROJECT_BRIEF          = "@PROJECT_DESCRIPTION@"
 OUTPUT_DIRECTORY       = "@CMAKE_CURRENT_BINARY_DIR@/docs"
 CREATE_SUBDIRS         = NO
 
-INPUT                  = @CMAKE_CURRENT_SOURCE_DIR@/include/cppanp \
+INPUT                  = @CMAKE_CURRENT_SOURCE_DIR@/include/anpcpp \
                          @CMAKE_CURRENT_SOURCE_DIR@/docs/mainpage.md \
                          @CMAKE_CURRENT_SOURCE_DIR@/docs/examples.md
 RECURSIVE              = YES

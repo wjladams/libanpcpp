@@ -9,9 +9,9 @@
 #include <stdexcept>
 #include <string>
 
-#include "cppanp/matrix.hpp"
+#include "anpcpp/matrix.hpp"
 
-namespace cppanp {
+namespace anpcpp {
 
 /**
  * @brief Thrown when power iteration fails to converge within max_iterations.
@@ -88,4 +88,4 @@ struct EigenResult {
 [[nodiscard]] double principal_eigenvalue(const Matrix& mat,
                                           const EigenOptions& options = {});
 
-}  // namespace cppanp
+}  // namespace anpcpp

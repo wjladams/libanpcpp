@@ -1,4 +1,4 @@
-#include "cppanp/synthesis.hpp"
+#include "anpcpp/synthesis.hpp"
 
 #include <cmath>
 #include <gtest/gtest.h>
@@ -7,16 +7,16 @@
 #include <string>
 #include <vector>
 
-#include "cppanp/network.hpp"
+#include "anpcpp/network.hpp"
 
-using cppanp::AnpNetwork;
-using cppanp::SynthesisKind;
-using cppanp::SynthesisOptions;
-using cppanp::eval_expression;
-using cppanp::synthesize;
-using cppanp::synthesize_additive;
-using cppanp::synthesize_custom;
-using cppanp::synthesize_multiplicative;
+using anpcpp::AnpNetwork;
+using anpcpp::SynthesisKind;
+using anpcpp::SynthesisOptions;
+using anpcpp::eval_expression;
+using anpcpp::synthesize;
+using anpcpp::synthesize_additive;
+using anpcpp::synthesize_custom;
+using anpcpp::synthesize_multiplicative;
 
 TEST(SynthesisTest, EvalExpressionBasics) {
   const std::map<std::string, double> vars{{"Benefits", 0.6}, {"Costs", 0.3}};

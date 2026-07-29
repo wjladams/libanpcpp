@@ -1,12 +1,12 @@
-#include "cppanp/network.hpp"
+#include "anpcpp/network.hpp"
 
-#include "cppanp/synthesis.hpp"
+#include "anpcpp/synthesis.hpp"
 
 #include <cstddef>
 #include <stdexcept>
 #include <utility>
 
-namespace cppanp {
+namespace anpcpp {
 
 // ---------------------------------------------------------------------------
 // AnpNode
@@ -739,4 +739,4 @@ Vector AnpNetwork::subnet_synthesize(const LimitMatrixOptions& options) const {
   return rval;
 }
 
-}  // namespace cppanp
+}  // namespace anpcpp

@@ -1,8 +1,8 @@
-#include "cppanp/inconsistency.hpp"
+#include "anpcpp/inconsistency.hpp"
 
 #include <array>
 
-namespace cppanp {
+namespace anpcpp {
 namespace {
 
 // Saaty RI for n = 1..15 (1-based indexing via [n]). Values match pyanp.
@@ -93,4 +93,4 @@ double consistency_ratio(const Matrix& mat, ConsistencyOptions options) {
   return result.consistency_ratio;
 }
 
-}  // namespace cppanp
+}  // namespace anpcpp

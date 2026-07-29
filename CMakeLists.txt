@@ -44,8 +44,6 @@ add_library(anpcpp STATIC
   src/json_io.cpp
 )
 add_library(anpcpp::anpcpp ALIAS anpcpp)
-# Compatibility alias for earlier cppanp consumers.
-add_library(cppanp::core ALIAS anpcpp)
 
 target_include_directories(anpcpp
   PUBLIC
@@ -90,7 +88,7 @@ if(ANPCPP_INSTALL)
     INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
   )
 
-  install(DIRECTORY include/cppanp
+  install(DIRECTORY include/anpcpp
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
   )
 

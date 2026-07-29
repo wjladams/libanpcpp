@@ -1,9 +1,9 @@
-#include "cppanp/matrix.hpp"
+#include "anpcpp/matrix.hpp"
 
 #include <cmath>
 #include <sstream>
 
-namespace cppanp {
+namespace anpcpp {
 namespace {
 
 [[nodiscard]] bool values_near(double a,
@@ -402,4 +402,4 @@ Matrix operator*(double scalar, const Matrix& m) {
   return m * scalar;
 }
 
-}  // namespace cppanp
+}  // namespace anpcpp

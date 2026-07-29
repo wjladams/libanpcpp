@@ -1,11 +1,11 @@
-#include "cppanp/synthesis.hpp"
+#include "anpcpp/synthesis.hpp"
 
 #include <cctype>
 #include <cmath>
 #include <stdexcept>
 #include <utility>
 
-namespace cppanp {
+namespace anpcpp {
 namespace {
 
 void normalize_map(std::map<std::string, double>& vals) {
@@ -275,4 +275,4 @@ double eval_expression(const std::string& expression,
   return parser.parse();
 }
 
-}  // namespace cppanp
+}  // namespace anpcpp

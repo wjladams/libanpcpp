@@ -7,9 +7,9 @@
 
 #include <cstddef>
 
-#include "cppanp/matrix.hpp"
+#include "anpcpp/matrix.hpp"
 
-namespace cppanp {
+namespace anpcpp {
 
 /**
  * @brief Options for limit-matrix calculation.
@@ -53,4 +53,4 @@ void column_normalize_inplace(Matrix& mat);
  */
 [[nodiscard]] Vector priority_from_limit(const Matrix& limit_matrix);
 
-}  // namespace cppanp
+}  // namespace anpcpp

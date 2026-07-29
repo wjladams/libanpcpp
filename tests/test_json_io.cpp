@@ -1,12 +1,12 @@
-#include "cppanp/json_io.hpp"
+#include "anpcpp/json_io.hpp"
 
 #include <gtest/gtest.h>
 
-#include "cppanp/network.hpp"
+#include "anpcpp/network.hpp"
 
-using cppanp::AnpNetwork;
-using cppanp::network_from_json;
-using cppanp::network_to_json;
+using anpcpp::AnpNetwork;
+using anpcpp::network_from_json;
+using anpcpp::network_to_json;
 
 TEST(JsonIoTest, RoundTripFlatNetwork) {
   AnpNetwork net;

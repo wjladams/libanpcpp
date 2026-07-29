@@ -1,9 +1,9 @@
-#include "cppanp/eigen.hpp"
+#include "anpcpp/eigen.hpp"
 
 #include <cmath>
 #include <sstream>
 
-namespace cppanp {
+namespace anpcpp {
 namespace {
 
 void check_square(const Matrix& mat, const char* op) {
@@ -105,4 +105,4 @@ double principal_eigenvalue(const Matrix& mat, const EigenOptions& options) {
   return result.value;
 }
 
-}  // namespace cppanp
+}  // namespace anpcpp

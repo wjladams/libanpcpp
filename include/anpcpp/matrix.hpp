@@ -11,10 +11,10 @@
 #include <vector>
 
 /**
- * @namespace cppanp
+ * @namespace anpcpp
  * @brief Analytic Network Process computational library.
  */
-namespace cppanp {
+namespace anpcpp {
 
 /**
  * @brief Thrown when vector/matrix dimensions do not match an operation.
@@ -251,4 +251,4 @@ private:
   void check_same_shape(const Matrix& other, const char* op) const;
 };
 
-}  // namespace cppanp
+}  // namespace anpcpp

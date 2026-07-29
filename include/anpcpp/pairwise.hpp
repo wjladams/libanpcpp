@@ -9,11 +9,11 @@
 #include <string>
 #include <vector>
 
-#include "cppanp/eigen.hpp"
-#include "cppanp/inconsistency.hpp"
-#include "cppanp/matrix.hpp"
+#include "anpcpp/eigen.hpp"
+#include "anpcpp/inconsistency.hpp"
+#include "anpcpp/matrix.hpp"
 
-namespace cppanp {
+namespace anpcpp {
 
 /**
  * @brief Square pairwise comparison table over a named list of alternatives.
@@ -98,4 +98,4 @@ private:
   Matrix matrix_;
 };
 
-}  // namespace cppanp
+}  // namespace anpcpp

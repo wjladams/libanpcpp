@@ -1,13 +1,13 @@
-#include "cppanp/inconsistency.hpp"
+#include "anpcpp/inconsistency.hpp"
 
 #include <gtest/gtest.h>
 
 #include <cmath>
 #include <initializer_list>
 
-using cppanp::ConsistencyOptions;
-using cppanp::ConsistencyResult;
-using cppanp::Matrix;
+using anpcpp::ConsistencyOptions;
+using anpcpp::ConsistencyResult;
+using anpcpp::Matrix;
 
 namespace {
 
@@ -27,41 +27,41 @@ Matrix make_matrix(std::size_t rows,
 }  // namespace
 
 TEST(InconsistencyTest, RandomIndexSaatyTable) {
-  EXPECT_DOUBLE_EQ(cppanp::random_index(1), 0.0);
-  EXPECT_DOUBLE_EQ(cppanp::random_index(2), 0.0);
-  EXPECT_DOUBLE_EQ(cppanp::random_index(3), 0.52);
-  EXPECT_DOUBLE_EQ(cppanp::random_index(4), 0.89);
-  EXPECT_DOUBLE_EQ(cppanp::random_index(5), 1.12);
-  EXPECT_DOUBLE_EQ(cppanp::random_index(6), 1.25);
-  EXPECT_DOUBLE_EQ(cppanp::random_index(7), 1.35);
-  EXPECT_DOUBLE_EQ(cppanp::random_index(8), 1.40);
-  EXPECT_DOUBLE_EQ(cppanp::random_index(9), 1.45);
-  EXPECT_DOUBLE_EQ(cppanp::random_index(10), 1.49);
-  EXPECT_DOUBLE_EQ(cppanp::random_index(11), 1.51);
-  EXPECT_DOUBLE_EQ(cppanp::random_index(12), 1.54);
-  EXPECT_DOUBLE_EQ(cppanp::random_index(13), 1.56);
-  EXPECT_DOUBLE_EQ(cppanp::random_index(14), 1.57);
-  EXPECT_DOUBLE_EQ(cppanp::random_index(15), 1.58);
+  EXPECT_DOUBLE_EQ(anpcpp::random_index(1), 0.0);
+  EXPECT_DOUBLE_EQ(anpcpp::random_index(2), 0.0);
+  EXPECT_DOUBLE_EQ(anpcpp::random_index(3), 0.52);
+  EXPECT_DOUBLE_EQ(anpcpp::random_index(4), 0.89);
+  EXPECT_DOUBLE_EQ(anpcpp::random_index(5), 1.12);
+  EXPECT_DOUBLE_EQ(anpcpp::random_index(6), 1.25);
+  EXPECT_DOUBLE_EQ(anpcpp::random_index(7), 1.35);
+  EXPECT_DOUBLE_EQ(anpcpp::random_index(8), 1.40);
+  EXPECT_DOUBLE_EQ(anpcpp::random_index(9), 1.45);
+  EXPECT_DOUBLE_EQ(anpcpp::random_index(10), 1.49);
+  EXPECT_DOUBLE_EQ(anpcpp::random_index(11), 1.51);
+  EXPECT_DOUBLE_EQ(anpcpp::random_index(12), 1.54);
+  EXPECT_DOUBLE_EQ(anpcpp::random_index(13), 1.56);
+  EXPECT_DOUBLE_EQ(anpcpp::random_index(14), 1.57);
+  EXPECT_DOUBLE_EQ(anpcpp::random_index(15), 1.58);
 }
 
 TEST(InconsistencyTest, RandomIndexLargeNUsesAlonsoLamata) {
   // Official CR uses RI ≈ 1.98*(n-2)/n for n > 15.
   // pyanp's inconsistency_divisor omitted the (n-1) factor here; we do not.
-  EXPECT_DOUBLE_EQ(cppanp::random_index(16), 1.98 * 14.0 / 16.0);
-  EXPECT_DOUBLE_EQ(cppanp::random_index(20), 1.98 * 18.0 / 20.0);
+  EXPECT_DOUBLE_EQ(anpcpp::random_index(16), 1.98 * 14.0 / 16.0);
+  EXPECT_DOUBLE_EQ(anpcpp::random_index(20), 1.98 * 18.0 / 20.0);
 }
 
 TEST(InconsistencyTest, ConsistencyIndexFormula) {
-  EXPECT_DOUBLE_EQ(cppanp::consistency_index(3.0, 3), 0.0);
-  EXPECT_NEAR(cppanp::consistency_index(3.104, 3), 0.052, 1e-12);
-  EXPECT_DOUBLE_EQ(cppanp::consistency_index(5.0, 1), 0.0);
+  EXPECT_DOUBLE_EQ(anpcpp::consistency_index(3.0, 3), 0.0);
+  EXPECT_NEAR(anpcpp::consistency_index(3.104, 3), 0.052, 1e-12);
+  EXPECT_DOUBLE_EQ(anpcpp::consistency_index(5.0, 1), 0.0);
 }
 
 TEST(InconsistencyTest, ConsistencyRatioFormula) {
   // CR = CI / RI = 0.052 / 0.52 = 0.1
-  EXPECT_NEAR(cppanp::consistency_ratio(3.104, 3), 0.1, 1e-12);
-  EXPECT_DOUBLE_EQ(cppanp::consistency_ratio(2.0, 2), 0.0);
-  EXPECT_DOUBLE_EQ(cppanp::consistency_ratio(1.0, 1), 0.0);
+  EXPECT_NEAR(anpcpp::consistency_ratio(3.104, 3), 0.1, 1e-12);
+  EXPECT_DOUBLE_EQ(anpcpp::consistency_ratio(2.0, 2), 0.0);
+  EXPECT_DOUBLE_EQ(anpcpp::consistency_ratio(1.0, 1), 0.0);
 }
 
 TEST(InconsistencyTest, ConsistentMatrixHasZeroInconsistency) {
@@ -71,7 +71,7 @@ TEST(InconsistencyTest, ConsistentMatrixHasZeroInconsistency) {
 
   ConsistencyOptions options;
   options.use_harker = false;
-  const ConsistencyResult result = cppanp::consistency(m, options);
+  const ConsistencyResult result = anpcpp::consistency(m, options);
 
   EXPECT_TRUE(result.converged);
   EXPECT_NEAR(result.lambda_max, 3.0, 1e-9);
@@ -91,7 +91,7 @@ TEST(InconsistencyTest, TwoThreeSixIsPerfectlyConsistent) {
   for (const bool use_harker : {false, true}) {
     ConsistencyOptions options;
     options.use_harker = use_harker;
-    const ConsistencyResult result = cppanp::consistency(m, options);
+    const ConsistencyResult result = anpcpp::consistency(m, options);
 
     EXPECT_TRUE(result.converged);
     EXPECT_NEAR(result.lambda_max, 3.0, 1e-9);
@@ -113,7 +113,7 @@ TEST(InconsistencyTest, TwoThreeFourIsSlightlyInconsistent) {
 
   ConsistencyOptions options;
   options.use_harker = false;
-  const ConsistencyResult result = cppanp::consistency(m, options);
+  const ConsistencyResult result = anpcpp::consistency(m, options);
 
   EXPECT_NEAR(result.lambda_max, 3.018294707281254, 1e-9);
   EXPECT_NEAR(result.consistency_index, 0.00914735364062702, 1e-9);
@@ -136,7 +136,7 @@ TEST(InconsistencyTest, LaptopCriteriaExample) {
 
   ConsistencyOptions options;
   options.use_harker = false;
-  const ConsistencyResult result = cppanp::consistency(m, options);
+  const ConsistencyResult result = anpcpp::consistency(m, options);
 
   EXPECT_NEAR(result.lambda_max, 3.0092027127147167, 1e-9);
   EXPECT_NEAR(result.consistency_index, 0.004601356357358366, 1e-9);
@@ -164,7 +164,7 @@ TEST(InconsistencyTest, FourByFourPerronVectorExample) {
 
   ConsistencyOptions options;
   options.use_harker = false;
-  const ConsistencyResult result = cppanp::consistency(m, options);
+  const ConsistencyResult result = anpcpp::consistency(m, options);
 
   EXPECT_NEAR(result.lambda_max, 4.170149768332779, 1e-8);
   EXPECT_NEAR(result.consistency_index, 0.05671658933, 1e-8);
@@ -189,7 +189,7 @@ TEST(InconsistencyTest, RandomIndexTableChoiceOnlyAffectsCr) {
 
   ConsistencyOptions options;
   options.use_harker = false;
-  const ConsistencyResult result = cppanp::consistency(m, options);
+  const ConsistencyResult result = anpcpp::consistency(m, options);
 
   const double classic_saaty_cr = result.consistency_index / 0.58;
   EXPECT_DOUBLE_EQ(result.random_index, 0.52);
@@ -205,7 +205,7 @@ TEST(InconsistencyTest, InconsistentMatrixMatchesOfficialCr) {
 
   ConsistencyOptions options;
   options.use_harker = false;
-  const ConsistencyResult result = cppanp::consistency(m, options);
+  const ConsistencyResult result = anpcpp::consistency(m, options);
 
   // lambda_max ≈ 3.005535111748623 from pyanp/pri_eigen
   const double lambda = 3.005535111748623;
@@ -217,8 +217,8 @@ TEST(InconsistencyTest, InconsistentMatrixMatchesOfficialCr) {
   EXPECT_NEAR(result.consistency_ratio, cr, 1e-9);
 
   // For n=3, pyanp.incon_std is also CR (divisor = 0.52 * 2).
-  EXPECT_NEAR(cppanp::consistency_ratio(m, options), cr, 1e-9);
-  EXPECT_NEAR(cppanp::consistency_index(m, options), ci, 1e-9);
+  EXPECT_NEAR(anpcpp::consistency_ratio(m, options), cr, 1e-9);
+  EXPECT_NEAR(anpcpp::consistency_index(m, options), ci, 1e-9);
 }
 
 TEST(InconsistencyTest, LargeNUsesCorrectCrDivisor) {
@@ -231,7 +231,7 @@ TEST(InconsistencyTest, LargeNUsesCorrectCrDivisor) {
   const double expected_cr = (lambda - 16.0) / (15.0 * ri);
   const double pyanp_buggy_cr = (lambda - 16.0) / ri;
 
-  EXPECT_NEAR(cppanp::consistency_ratio(lambda, n), expected_cr, 1e-12);
+  EXPECT_NEAR(anpcpp::consistency_ratio(lambda, n), expected_cr, 1e-12);
   EXPECT_GT(std::abs(pyanp_buggy_cr - expected_cr), 1e-6);
 }
 
@@ -239,6 +239,6 @@ TEST(InconsistencyTest, TwoByTwoAlwaysZeroCr) {
   const Matrix m = make_matrix(2, 2, {1.0, 3.0, 1.0 / 3.0, 1.0});
   ConsistencyOptions options;
   options.use_harker = false;
-  EXPECT_NEAR(cppanp::consistency_ratio(m, options), 0.0, 1e-12);
-  EXPECT_NEAR(cppanp::consistency_index(m, options), 0.0, 1e-12);
+  EXPECT_NEAR(anpcpp::consistency_ratio(m, options), 0.0, 1e-12);
+  EXPECT_NEAR(anpcpp::consistency_index(m, options), 0.0, 1e-12);
 }

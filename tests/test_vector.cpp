@@ -1,11 +1,11 @@
-#include "cppanp/matrix.hpp"
+#include "anpcpp/matrix.hpp"
 
 #include <gtest/gtest.h>
 
 #include <utility>
 
-using cppanp::DimensionError;
-using cppanp::Vector;
+using anpcpp::DimensionError;
+using anpcpp::Vector;
 
 TEST(VectorTest, DefaultIsEmpty) {
   const Vector v;

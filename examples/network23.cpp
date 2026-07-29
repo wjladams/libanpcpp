@@ -5,16 +5,16 @@
 //
 // Every node depends on every other node (criteria on alternatives, alternatives
 // on criteria, plus inner dependence). The scaled supermatrix therefore has
-// feedback, so cppanp resolves the limit matrix with the iterative "calculus"
+// feedback, so anpcpp resolves the limit matrix with the iterative "calculus"
 // method rather than the hierarchy short-circuit.
 
 #include <iostream>
 
 #include "anp_print.hpp"
-#include "cppanp/network.hpp"
+#include "anpcpp/network.hpp"
 
-using namespace cppanp;
-using namespace cppanp::examples;
+using namespace anpcpp;
+using namespace anpcpp::examples;
 
 int main() {
   print_header("Network23: fully connected 2-cluster ANP network");

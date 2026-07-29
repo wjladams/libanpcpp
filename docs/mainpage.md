@@ -2,7 +2,7 @@
 
 [Project home](https://bamath.org/libanpcpp/)
 
-Browse the public C++ API (`namespace cppanp`, target `anpcpp::anpcpp`).
+Browse the public C++ API (`namespace anpcpp`, target `anpcpp::anpcpp`).
 
 ## Modules
 

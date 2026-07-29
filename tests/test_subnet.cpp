@@ -1,8 +1,8 @@
-#include "cppanp/network.hpp"
+#include "anpcpp/network.hpp"
 
 #include <gtest/gtest.h>
 
-using cppanp::AnpNetwork;
+using anpcpp::AnpNetwork;
 
 TEST(SubnetTest, AltNamesComeFromSubnetworks) {
   AnpNetwork net(false);

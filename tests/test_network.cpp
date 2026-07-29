@@ -1,10 +1,10 @@
-#include "cppanp/network.hpp"
+#include "anpcpp/network.hpp"
 
 #include <gtest/gtest.h>
 
-using cppanp::AnpNetwork;
-using cppanp::Matrix;
-using cppanp::Vector;
+using anpcpp::AnpNetwork;
+using anpcpp::Matrix;
+using anpcpp::Vector;
 
 TEST(NetworkTest, CreatesAlternativesClusterByDefault) {
   AnpNetwork net;

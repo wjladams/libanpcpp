@@ -6,15 +6,15 @@
 //
 // The goal points at the three criteria; each criterion points at the shared
 // alternatives cluster. That makes the scaled supermatrix a strict hierarchy
-// (nilpotent), so cppanp resolves the limit matrix with the hierarchy formula.
+// (nilpotent), so anpcpp resolves the limit matrix with the hierarchy formula.
 
 #include <iostream>
 
 #include "anp_print.hpp"
-#include "cppanp/network.hpp"
+#include "anpcpp/network.hpp"
 
-using namespace cppanp;
-using namespace cppanp::examples;
+using namespace anpcpp;
+using namespace anpcpp::examples;
 
 int main() {
   print_header("Tree134: goal / 3 criteria / 3 alternatives hierarchy");

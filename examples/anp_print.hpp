@@ -1,6 +1,6 @@
 #pragma once
 
-// Small formatting helpers shared by the cppanp example programs. These are
+// Small formatting helpers shared by the anpcpp example programs. These are
 // header-only so each example stays a single translation unit.
 
 #include <iomanip>
@@ -8,9 +8,9 @@
 #include <string>
 #include <vector>
 
-#include "cppanp/network.hpp"
+#include "anpcpp/network.hpp"
 
-namespace cppanp::examples {
+namespace anpcpp::examples {
 
 inline void print_header(const std::string& title) {
   std::cout << "\n" << std::string(72, '=') << "\n";
@@ -143,4 +143,4 @@ inline void print_network_results(AnpNetwork& net) {
   print_vector("alternatives", net.alt_names(), net.priority());
 }
 
-}  // namespace cppanp::examples
+}  // namespace anpcpp::examples

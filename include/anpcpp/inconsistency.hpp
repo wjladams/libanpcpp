@@ -7,10 +7,10 @@
 
 #include <cstddef>
 
-#include "cppanp/eigen.hpp"
-#include "cppanp/matrix.hpp"
+#include "anpcpp/eigen.hpp"
+#include "anpcpp/matrix.hpp"
 
-namespace cppanp {
+namespace anpcpp {
 
 /**
  * @brief Saaty random index (RI) for matrix order @p n.
@@ -80,4 +80,4 @@ struct ConsistencyResult {
 [[nodiscard]] double consistency_ratio(const Matrix& mat,
                                        ConsistencyOptions options = {});
 
-}  // namespace cppanp
+}  // namespace anpcpp

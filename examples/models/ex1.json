@@ -1,5 +1,5 @@
 {
-  "format": "cppanp",
+  "format": "anpcpp",
   "network": {
     "alternatives_cluster": "Alternatives",
     "clusters": [

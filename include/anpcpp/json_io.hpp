@@ -9,9 +9,9 @@
 #include <stdexcept>
 #include <string>
 
-#include "cppanp/network.hpp"
+#include "anpcpp/network.hpp"
 
-namespace cppanp {
+namespace anpcpp {
 
 /**
  * @brief Thrown on JSON parse, validation, or I/O errors.
@@ -28,7 +28,7 @@ public:
 /**
  * @brief Serializes a network (including subnetworks and layout hints) to JSON.
  * @param network Network to serialize.
- * @return JSON text (cppanp format v1).
+ * @return JSON text (anpcpp format v1).
  */
 [[nodiscard]] std::string network_to_json(const AnpNetwork& network);
 
@@ -58,4 +58,4 @@ void save_network_file(const AnpNetwork& network, const std::string& path);
 [[nodiscard]] std::unique_ptr<AnpNetwork> load_network_file(
     const std::string& path);
 
-}  // namespace cppanp
+}  // namespace anpcpp

@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-namespace cppanp {
+namespace anpcpp {
 
 /**
  * @brief How control-node subnetwork scores are combined.
@@ -96,4 +96,4 @@ public:
     const std::string& expression,
     const std::map<std::string, double>& variables);
 
-}  // namespace cppanp
+}  // namespace anpcpp
