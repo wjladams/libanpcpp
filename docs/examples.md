@@ -21,7 +21,7 @@ Shared formatting helpers are in `examples/anp_print.hpp` (not a demo itself).
 
 ---
 
-## tree134
+## tree134 {#tree134}
 
 **Source:** `examples/tree134.cpp`
 
@@ -48,7 +48,7 @@ alternatives.
 
 ---
 
-## network23
+## network23 {#network23}
 
 **Source:** `examples/network23.cpp`
 
@@ -73,7 +73,7 @@ differ from a pure hierarchy of the same local scores.
 
 ---
 
-## hamburger_std
+## hamburger_std {#hamburger_std}
 
 **Source:** `examples/hamburger_std.cpp`
 
@@ -95,7 +95,7 @@ as a cross-check against SuperDecisions / reference behavior.
 
 ---
 
-## benefits_costs_subnet
+## benefits_costs_subnet {#benefits_costs_subnet}
 
 **Source:** `examples/benefits_costs_subnet.cpp`
 
