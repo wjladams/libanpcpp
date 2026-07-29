@@ -27,6 +27,9 @@ void check_square(const Matrix& mat, const char* op) {
 
 Matrix harker_fix(const Matrix& mat) {
   check_square(mat, "harker_fix");
+  // Harker (1987): treat each missing (zero) off-diagonal entry as a 1:1
+  // comparison by increasing the corresponding diagonal so row/column sums
+  // remain consistent with complete pairwise data.
   Matrix fixed = mat;
   for (std::size_t row = 0; row < fixed.rows(); ++row) {
     double value = 1.0;
@@ -52,6 +55,8 @@ EigenResult principal_eigen(const Matrix& mat, const EigenOptions& options) {
   const Matrix work = options.use_harker ? harker_fix(mat) : mat;
   const std::size_t size = work.rows();
 
+  // Power iteration: v_{k+1} = W v_k / sum(W v_k). Start uniform so every
+  // positive column of W can contribute on the first multiply.
   Vector vec(size, 1.0);
   double diff = 1.0;
   std::size_t iterations = 0;
@@ -75,6 +80,7 @@ EigenResult principal_eigen(const Matrix& mat, const EigenOptions& options) {
   result.vector = vec;
   result.iterations = iterations;
   result.converged = diff <= options.error;
+  // Rayleigh quotient for a column-stochastic iterate: λ ≈ sum(W v).
   result.value = (work * vec).sum();
   return result;
 }

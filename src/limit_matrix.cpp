@@ -58,6 +58,8 @@ namespace {
   if (n == 0) {
     return 1;
   }
+  // Pick a starting exponent large enough that tiny entries have decayed.
+  // Entries below 1/(20n) are treated as "small"; their average sets the scale.
   const double epsilon = 1.0 / (20.0 * static_cast<double>(n));
   std::vector<double> small_entries;
   for (std::size_t i = 0; i < n; ++i) {
@@ -80,6 +82,8 @@ namespace {
   return static_cast<std::size_t>(A) * n * n;
 }
 
+// Max absolute difference after per-column scaling (handles differently
+// scaled powers of the same limit matrix during convergence checks).
 [[nodiscard]] double normalize_cols_dist(const Matrix& mat1,
                                          const Matrix& mat2) {
   const Vector div1 = column_maxes(mat1);
@@ -127,11 +131,13 @@ Matrix hierarchy_formula(const Matrix& mat) {
     return Matrix{};
   }
 
+  // A hierarchy has W^{n+1} = 0 (no cyclic influence). If not, bail out.
   const Matrix big = mat_pow2(mat, size + 1, false);
   if (matrix_max_abs(big) != 0.0) {
     return Matrix{};  // not a hierarchy
   }
 
+  // Closed form: L = W + W² + … + W^{n-1}, column-normalized.
   Matrix summ = mat;
   Matrix thispow = mat;
   for (std::size_t i = 0; i + 2 < size; ++i) {
@@ -156,8 +162,12 @@ Matrix calculus_limit(const Matrix& mat, const LimitMatrixOptions& options) {
     start_pow = calculus_start_power(mat);
   }
 
+  // Jump to W^start_pow via repeated squaring; rescale after each square to
+  // avoid overflow on large exponents.
   Matrix start = mat_pow2(mat, start_pow, true);
   if (options.use_hierarchy_formula && matrix_max_abs(start) == 0.0) {
+    // W^start may underflow to zero for hierarchical matrices; try W^n and
+    // fall back to the closed-form hierarchy sum when applicable.
     start = mat_pow2(mat, size, false);
     if (matrix_max_abs(start) == 0.0) {
       const Matrix hier = hierarchy_formula(mat);
@@ -167,6 +177,8 @@ Matrix calculus_limit(const Matrix& mat, const LimitMatrixOptions& options) {
     }
   }
 
+  // Sliding window of successive powers W^k … W^{k+n-1}; stop when two
+  // consecutive powers agree column-wise within tolerance.
   std::vector<Matrix> pows;
   pows.reserve(size);
   pows.push_back(start);
@@ -179,6 +191,7 @@ Matrix calculus_limit(const Matrix& mat, const LimitMatrixOptions& options) {
     }
   }
 
+  // Advance the window: drop the oldest power, append W * newest.
   for (std::size_t count = 0; count < options.max_iters; ++count) {
     Matrix nextp = pows.back() * mat;
     for (std::size_t i = 0; i + 1 < pows.size(); ++i) {

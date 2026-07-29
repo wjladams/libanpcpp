@@ -160,6 +160,8 @@ std::map<std::string, double> synthesize_additive(
     if (wit != subnet_weights.end()) weight_total += wit->second;
   }
 
+  // Weighted sum of subnet scores, then divide by total weight applied to
+  // each alternative (handles subnets that omit some alternatives).
   std::map<std::string, double> rval;
   std::map<std::string, double> counts;
   for (const auto& [subnet_name, vals] : alt_scores) {
@@ -197,6 +199,7 @@ std::map<std::string, double> synthesize_multiplicative(
     if (wit != subnet_weights.end()) w = wit->second;
     if (weight_total != 0.0) w /= weight_total;
 
+    // Generalized weighted geometric mean: product of score^weight across subnets.
     if (first) {
       for (const auto& [alt, val] : vals) {
         rval[alt] = (val <= 0.0) ? 0.0 : std::pow(val, w);
@@ -234,6 +237,7 @@ std::map<std::string, double> synthesize_custom(
 
   std::map<std::string, double> rval;
   for (const std::string& alt : alt_order) {
+    // Bind each subnet name to that alternative's score for this alt row.
     std::map<std::string, double> vars;
     for (const auto& [subnet_name, scores] : alt_scores) {
       const auto it = scores.find(alt);

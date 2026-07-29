@@ -11,6 +11,8 @@ namespace {
 
 using json = nlohmann::json;
 
+// Serialize a pairwise table: alternative names plus the full n×n matrix
+// (including reciprocals on the lower triangle).
 json pairwise_to_json(const PairwiseJudgments& pw) {
   json j;
   j["alternatives"] = pw.alternatives();
@@ -32,6 +34,7 @@ void pairwise_from_json(PairwiseJudgments& pw, const json& j) {
     pw.add_alternative(a, /*ignore_existing=*/true);
   }
   if (!j.contains("matrix")) return;
+  // Only upper-triangle entries are stored; set_comparison fills reciprocals.
   const auto& matrix = j.at("matrix");
   for (std::size_t i = 0; i < alts.size(); ++i) {
     for (std::size_t j = i + 1; j < alts.size(); ++j) {
@@ -65,6 +68,7 @@ json network_to_json_obj(const AnpNetwork& net) {
         nj["x"] = nx;
         nj["y"] = ny;
       }
+      // One pairwise table per destination cluster this node connects to.
       json pw_map = json::object();
       for (const AnpCluster* dest : net.clusters()) {
         const PairwiseJudgments* pw = n->node_pairwise(dest->name());
@@ -94,6 +98,8 @@ json network_to_json_obj(const AnpNetwork& net) {
 }
 
 void populate_network(AnpNetwork& net, const json& j) {
+  // Pass 1: create clusters/nodes and layout metadata so names exist before
+  // we wire connections and load pairwise matrices in pass 2.
   for (const auto& cj : j.at("clusters")) {
     const std::string cname = cj.at("name").get<std::string>();
     AnpCluster* existing = net.find_cluster(cname);
@@ -132,6 +138,7 @@ void populate_network(AnpNetwork& net, const json& j) {
     }
   }
 
+  // Pass 2: cluster/node pairwise data, implicit connections, and subnetworks.
   for (const auto& cj : j.at("clusters")) {
     AnpCluster& cluster = net.cluster(cj.at("name").get<std::string>());
     if (cj.contains("cluster_pairwise")) {
@@ -145,6 +152,7 @@ void populate_network(AnpNetwork& net, const json& j) {
           const std::string dest_cluster = it.key();
           const auto alts =
               it.value().at("alternatives").get<std::vector<std::string>>();
+          // Restore graph edges from the alternatives listed in each table.
           for (const std::string& dest_name : alts) {
             if (net.find_node(dest_name) != nullptr) {
               net.node_connect(node.name(), dest_name);
@@ -205,6 +213,7 @@ std::unique_ptr<AnpNetwork> network_from_json(const std::string& json_text) {
     throw JsonIoError("unsupported cppanp JSON version");
   }
 
+  // Skip auto-creating "Alternatives" when the file already defines that cluster.
   bool has_default_alts = false;
   for (const auto& cj : doc.at("network").at("clusters")) {
     if (cj.at("name").get<std::string>() ==

@@ -551,6 +551,9 @@ Matrix AnpNetwork::scaled_supermatrix() const {
   const auto cluster_list = clusters();
   const std::size_t nclusters = cluster_list.size();
 
+  // Columns follow global node order: all nodes in cluster 0, then cluster 1, …
+  // For each column (source node), multiply every row in that column by the
+  // source cluster's priority of the row's cluster (from cluster pairwise).
   std::size_t col = 0;
   for (std::size_t col_cp = 0; col_cp < nclusters; ++col_cp) {
     const AnpCluster* col_cluster = cluster_list[col_cp];
@@ -585,6 +588,7 @@ Matrix AnpNetwork::scaled_supermatrix() const {
     }
   }
 
+  // Final step: each column sums to 1 (column stochastic supermatrix).
   column_normalize_inplace(rval);
   return rval;
 }
@@ -652,6 +656,8 @@ Vector AnpNetwork::priority(const LimitMatrixOptions& options) const {
 std::map<std::string, double> AnpNetwork::priority_map(
     const LimitMatrixOptions& options) const {
   if (has_subnet()) {
+    // Subnetwork model: parent limit priorities weight each subnet's local
+    // alternative scores, then synthesis combines them.
     const Vector synth = subnet_synthesize(options);
     const std::vector<std::string> alts = alt_names();
     std::map<std::string, double> out;
@@ -661,6 +667,7 @@ std::map<std::string, double> AnpNetwork::priority_map(
     return out;
   }
 
+  // Flat network: extract alternative entries from the global limit priority.
   const Vector gp = global_priority(options);
   const std::vector<std::string> names = node_names();
   const std::vector<std::string> alts = alt_names();
@@ -688,7 +695,9 @@ Vector AnpNetwork::subnet_synthesize(const LimitMatrixOptions& options) const {
   const Vector gp = global_priority(options);
   const std::vector<std::string> names = node_names();
 
+  // Step 1: map each subnet-hosting node to its global priority (weight).
   std::map<std::string, double> subnet_weights;
+  // Step 2: run limit/priority on each subnetwork; optionally invert scores.
   std::map<std::string, std::map<std::string, double>> alt_scores;
 
   for (const AnpNode* n : nodes()) {
@@ -714,6 +723,7 @@ Vector AnpNetwork::subnet_synthesize(const LimitMatrixOptions& options) const {
     alt_scores[n->name()] = std::move(scores);
   }
 
+  // Step 3: combine per-subnet alternative scores using the configured method.
   const std::map<std::string, double> combined =
       synthesize(synthesis_, subnet_weights, alt_scores, alt_names());
   const std::vector<std::string> alts = alt_names();
