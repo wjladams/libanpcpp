@@ -40,8 +40,8 @@ subdirectory / FetchContent dependency, tests and examples default to **OFF**.
 ### Examples
 
 Runnable demos land in `build/examples/`. A guided walkthrough of each demo is
-in [`docs/examples.md`](docs/examples.md) (also published with the
-[API documentation](https://bamath.org/libanpcpp/)).
+in [`docs/examples.md`](docs/examples.md) (published at
+[https://bamath.org/libanpcpp/api/examples.html](https://bamath.org/libanpcpp/api/examples.html)).
 
 - `tree134` – goal / 3 criteria / 3 alternatives AHP hierarchy
 - `network23` – fully connected 2-cluster ANP network with feedback
@@ -90,8 +90,10 @@ Set `CMAKE_PREFIX_PATH` to the install prefix if needed.
 
 ## API documentation
 
-**Online:** [https://bamath.org/libanpcpp/](https://bamath.org/libanpcpp/)
-(published from `main` via GitHub Actions).
+**Site:** [https://bamath.org/libanpcpp/](https://bamath.org/libanpcpp/) (README
+landing page, published from `main` via GitHub Actions).
+
+**API reference:** [https://bamath.org/libanpcpp/api/](https://bamath.org/libanpcpp/api/)
 
 **Local build** requires [Doxygen](https://www.doxygen.org/) (e.g.
 `sudo apt install doxygen` on Ubuntu):
@@ -103,9 +105,15 @@ cmake --build build --target anpcpp_docs
 
 Open **[build/docs/html/index.html](build/docs/html/index.html)** in a browser.
 
-To enable Pages on GitHub: **Settings → Pages → Build and deployment → Source:
-GitHub Actions**. The workflow in `.github/workflows/docs.yml` deploys on push
-to `main` and on published releases.
+To preview the full site locally (README landing + API under `api/`):
+
+```bash
+cmake -S . -B build -DANPCPP_BUILD_DOCS=ON -DANPCPP_BUILD_TESTS=OFF -DANPCPP_BUILD_EXAMPLES=OFF
+cmake --build build --target anpcpp_docs
+cp -a build/docs/html docs/site/api
+cp README.md docs/site/README.content.md
+cd docs/site && bundle install && bundle exec jekyll serve --baseurl /libanpcpp
+```
 
 ## Desktop GUI
 

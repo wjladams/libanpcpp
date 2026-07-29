@@ -1,22 +1,8 @@
-# libanpcpp API Reference
+# API Reference {#mainpage}
 
-C++20 library for **Analytic Network Process (ANP)** models, pairwise judgments,
-supermatrices, limit-matrix calculations, synthesis (including subnetworks),
-and versioned JSON persistence.
+[Project home](https://bamath.org/libanpcpp/)
 
-## Quick start
-
-- **Namespace:** `cppanp`
-- **CMake target:** `anpcpp::anpcpp`
-- **Headers:** `#include <cppanp/network.hpp>` (and related headers)
-
-```cpp
-#include <cppanp/network.hpp>
-
-cppanp::AnpNetwork net;
-auto& goal = net.add_cluster("Goal");
-// ...
-```
+Browse the public C++ API (`namespace cppanp`, target `anpcpp::anpcpp`).
 
 ## Modules
 
@@ -33,9 +19,5 @@ auto& goal = net.add_cluster("Goal");
 
 ## Examples
 
-Runnable console demos live in the `examples/` directory. See the
-@ref examples "examples guide" for what each demo teaches and how to run it.
-
-## Desktop application
-
-The SuperDecisions-style Qt GUI is in the separate **cppanp** repository.
+See the @ref examples "examples guide" for runnable console demos and what each
+teaches.

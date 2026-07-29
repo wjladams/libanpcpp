@@ -1,5 +1,13 @@
 /build/
 /build-docs/
+/docs/site/api/
+/docs/site/README.content.md
+/docs/site/vendor/
+/docs/site/.sass-cache/
+/docs/site/_site/
+/_site/
+/.sass-cache/
+.sass-cache/
 /cmake-build-*/
 /.cache/
 /.vs/

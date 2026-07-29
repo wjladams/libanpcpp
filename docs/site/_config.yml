@@ -1,0 +1,15 @@
+title: libanpcpp
+description: C++20 Analytic Network Process (ANP) library
+baseurl: "/libanpcpp"
+url: "https://bamath.org"
+
+markdown: kramdown
+theme: minima
+
+plugins:
+  - jekyll-feed
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - vendor
