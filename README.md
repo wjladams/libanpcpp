@@ -57,7 +57,7 @@ Runnable demos land in `build/examples/`:
 ```cmake
 include(FetchContent)
 FetchContent_Declare(anpcpp
-  GIT_REPOSITORY https://github.com/<org>/libanpcpp.git
+  GIT_REPOSITORY https://github.com/wjadams/libanpcpp.git
   GIT_TAG v0.1.0)
 FetchContent_MakeAvailable(anpcpp)
 target_link_libraries(myapp PRIVATE anpcpp::anpcpp)
@@ -86,6 +86,25 @@ target_link_libraries(myapp PRIVATE anpcpp::anpcpp)
 
 Set `CMAKE_PREFIX_PATH` to the install prefix if needed.
 
+## API documentation
+
+**Online:** [https://bamath.org/libanpcpp/](https://bamath.org/libanpcpp/)
+(published from `main` via GitHub Actions).
+
+**Local build** requires [Doxygen](https://www.doxygen.org/) (e.g.
+`sudo apt install doxygen` on Ubuntu):
+
+```bash
+cmake -S . -B build -DANPCPP_BUILD_DOCS=ON -DANPCPP_BUILD_TESTS=OFF -DANPCPP_BUILD_EXAMPLES=OFF
+cmake --build build --target anpcpp_docs
+```
+
+Open **[build/docs/html/index.html](build/docs/html/index.html)** in a browser.
+
+To enable Pages on GitHub: **Settings → Pages → Build and deployment → Source:
+GitHub Actions**. The workflow in `.github/workflows/docs.yml` deploys on push
+to `main` and on published releases.
+
 ## Desktop GUI
 
 The SuperDecisions-style Qt application lives in a separate repository,
@@ -99,7 +118,7 @@ include/cppanp/   Public headers
 src/              Implementation
 tests/            GoogleTest suite
 examples/         Console ANP demos
-docs/             Developer notes
+docs/             Doxygen config and developer notes
 cmake/            Package config templates
 ```
 
