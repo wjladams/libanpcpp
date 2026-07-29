@@ -6,6 +6,8 @@ set(ANPCPP_EXAMPLES
   network23
   hamburger_std
   benefits_costs_subnet
+  ratings_demo
+  export_sample_models
 )
 
 foreach(example ${ANPCPP_EXAMPLES})

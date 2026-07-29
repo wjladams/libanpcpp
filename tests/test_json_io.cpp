@@ -22,6 +22,7 @@ TEST(JsonIoTest, RoundTripFlatNetwork) {
   net.set_node_position("Price", 1, 2);
 
   const std::string json = network_to_json(net);
+  EXPECT_NE(json.find("node_prioritizers"), std::string::npos);
   auto loaded = network_from_json(json);
   ASSERT_NE(loaded, nullptr);
   EXPECT_EQ(loaded->nclusters(), net.nclusters());

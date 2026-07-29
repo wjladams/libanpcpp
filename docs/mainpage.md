@@ -12,8 +12,9 @@ Browse the public C++ API (`namespace anpcpp`, target `anpcpp::anpcpp`).
 | @ref eigen.hpp | Principal eigenvector (power iteration) |
 | @ref inconsistency.hpp | Saaty consistency index and ratio |
 | @ref pairwise.hpp | Named pairwise comparison tables |
+| @ref ratings.hpp | Categorical / numeric ratings prioritizers |
 | @ref limit_matrix.hpp | Limit matrix and priority extraction |
-| @ref network.hpp | `AnpNetwork`, `AnpCluster`, `AnpNode` |
+| @ref network.hpp | `AnpNetwork`, `AnpCluster`, `AnpNode`, prioritizer slots |
 | @ref synthesis.hpp | Subnetwork score synthesis |
 | @ref json_io.hpp | JSON save/load (format v1) |
 

@@ -17,6 +17,7 @@ add_executable(anpcpp_tests
   test_eigen.cpp
   test_inconsistency.cpp
   test_pairwise.cpp
+  test_ratings.cpp
   test_limit_matrix.cpp
   test_network.cpp
   test_subnet.cpp

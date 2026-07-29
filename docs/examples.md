@@ -18,6 +18,8 @@ Shared formatting helpers are in `examples/anp_print.hpp` (not a demo itself).
 | [network23](#network23) | Full feedback ANP; iterative calculus limit matrix |
 | [hamburger_std](#hamburger_std) | Larger SuperDecisions reference market-share network |
 | [benefits_costs_subnet](#benefits_costs_subnet) | Control network with subnetworks and inverted Costs |
+| [ratings_demo](#ratings_demo) | Categorical and numeric ratings columns toward Alternatives |
+| export_sample_models | Writes starter JSON models under a chosen directory (see ANP Studio `samples/`) |
 
 ---
 
@@ -118,4 +120,27 @@ Costs).
 
 ```bash
 ./build/examples/benefits_costs_subnet
+```
+
+---
+
+## ratings_demo {#ratings_demo}
+
+**Source:** `examples/ratings_demo.cpp`
+
+A small hierarchy that uses `RatingsPrioritizer` instead of pairwise under the
+criteria:
+
+```text
+Goal:         Best  --pairwise-->  { Price, Quality }
+Price:        categorical Hi/Med/Low ratings of { A, B, C }
+Quality:      numeric scores with DivideByMax of { A, B, C }
+```
+
+**What to notice:** Price favors A (High) over C (Low); Quality favors C (100)
+over A (40) after divide-by-max; equal criteria weights from Best; L1-normalized
+rating columns feed the unscaled supermatrix the same way pairwise priorities do.
+
+```bash
+./build/examples/ratings_demo
 ```

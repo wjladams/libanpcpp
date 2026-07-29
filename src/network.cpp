@@ -9,6 +9,66 @@
 namespace anpcpp {
 
 // ---------------------------------------------------------------------------
+// NodePrioritizerSlot
+// ---------------------------------------------------------------------------
+
+const std::vector<std::string>& NodePrioritizerSlot::alternatives() const {
+  return kind == NodePrioritizerKind::Pairwise ? pairwise.alternatives()
+                                               : ratings.alternatives();
+}
+
+bool NodePrioritizerSlot::empty() const {
+  return kind == NodePrioritizerKind::Pairwise ? pairwise.empty()
+                                               : ratings.empty();
+}
+
+bool NodePrioritizerSlot::has_alternative(const std::string& name) const {
+  return kind == NodePrioritizerKind::Pairwise
+             ? pairwise.has_alternative(name)
+             : ratings.has_alternative(name);
+}
+
+void NodePrioritizerSlot::add_alternative(const std::string& name,
+                                          bool ignore_existing) {
+  if (kind == NodePrioritizerKind::Pairwise) {
+    pairwise.add_alternative(name, ignore_existing);
+  } else {
+    ratings.add_alternative(name, ignore_existing);
+  }
+}
+
+void NodePrioritizerSlot::remove_alternative(const std::string& name,
+                                             bool ignore_missing) {
+  if (kind == NodePrioritizerKind::Pairwise) {
+    pairwise.remove_alternative(name, ignore_missing);
+  } else {
+    ratings.remove_alternative(name, ignore_missing);
+  }
+}
+
+Vector NodePrioritizerSlot::priorities() const {
+  return kind == NodePrioritizerKind::Pairwise ? pairwise.priorities()
+                                               : ratings.priorities();
+}
+
+void NodePrioritizerSlot::set_kind(NodePrioritizerKind new_kind) {
+  if (kind == new_kind) {
+    return;
+  }
+  const std::vector<std::string> alts = alternatives();
+  kind = new_kind;
+  if (kind == NodePrioritizerKind::Pairwise) {
+    pairwise = PairwiseJudgments(alts);
+    ratings = RatingsPrioritizer{};
+  } else {
+    ratings = RatingsPrioritizer(alts);
+    ratings.set_mode(RatingsPrioritizer::Mode::Numeric);
+    ratings.set_interpreter(IdentityInterpreter{});
+    pairwise = PairwiseJudgments{};
+  }
+}
+
+// ---------------------------------------------------------------------------
 // AnpNode
 // ---------------------------------------------------------------------------
 
@@ -22,8 +82,8 @@ void AnpNode::connect_to(AnpNode* dest) {
   if (dest->network_ != network_) {
     throw std::invalid_argument("cannot connect nodes from different networks");
   }
-  PairwiseJudgments& pw = node_prioritizers_[dest->cluster_->name()];
-  pw.add_alternative(dest->name_, /*ignore_existing=*/true);
+  NodePrioritizerSlot& slot = node_prioritizers_[dest->cluster_->name()];
+  slot.add_alternative(dest->name_, /*ignore_existing=*/true);
   cluster_->cluster_connect(dest->cluster_);
 }
 
@@ -56,28 +116,84 @@ bool AnpNode::is_connected_to_cluster(const std::string& cluster_name) const {
   return node_prioritizers_.find(cluster_name) != node_prioritizers_.end();
 }
 
-PairwiseJudgments* AnpNode::node_pairwise(const std::string& dest_cluster) {
+NodePrioritizerSlot* AnpNode::node_prioritizer(const std::string& dest_cluster) {
   const auto it = node_prioritizers_.find(dest_cluster);
   return it == node_prioritizers_.end() ? nullptr : &it->second;
 }
 
-const PairwiseJudgments* AnpNode::node_pairwise(
+const NodePrioritizerSlot* AnpNode::node_prioritizer(
     const std::string& dest_cluster) const {
   const auto it = node_prioritizers_.find(dest_cluster);
   return it == node_prioritizers_.end() ? nullptr : &it->second;
 }
 
+PairwiseJudgments* AnpNode::node_pairwise(const std::string& dest_cluster) {
+  NodePrioritizerSlot* slot = node_prioritizer(dest_cluster);
+  if (slot == nullptr || slot->kind != NodePrioritizerKind::Pairwise) {
+    return nullptr;
+  }
+  return &slot->pairwise;
+}
+
+const PairwiseJudgments* AnpNode::node_pairwise(
+    const std::string& dest_cluster) const {
+  const NodePrioritizerSlot* slot = node_prioritizer(dest_cluster);
+  if (slot == nullptr || slot->kind != NodePrioritizerKind::Pairwise) {
+    return nullptr;
+  }
+  return &slot->pairwise;
+}
+
+RatingsPrioritizer* AnpNode::node_ratings(const std::string& dest_cluster) {
+  NodePrioritizerSlot* slot = node_prioritizer(dest_cluster);
+  if (slot == nullptr || slot->kind != NodePrioritizerKind::Ratings) {
+    return nullptr;
+  }
+  return &slot->ratings;
+}
+
+const RatingsPrioritizer* AnpNode::node_ratings(
+    const std::string& dest_cluster) const {
+  const NodePrioritizerSlot* slot = node_prioritizer(dest_cluster);
+  if (slot == nullptr || slot->kind != NodePrioritizerKind::Ratings) {
+    return nullptr;
+  }
+  return &slot->ratings;
+}
+
+NodePrioritizerKind AnpNode::node_prioritizer_kind(
+    const std::string& dest_cluster) const {
+  const NodePrioritizerSlot* slot = node_prioritizer(dest_cluster);
+  if (slot == nullptr) {
+    throw std::out_of_range("no prioritizer for destination cluster: " +
+                            dest_cluster);
+  }
+  return slot->kind;
+}
+
+void AnpNode::set_node_prioritizer_kind(const std::string& dest_cluster,
+                                        NodePrioritizerKind kind) {
+  NodePrioritizerSlot* slot = node_prioritizer(dest_cluster);
+  if (slot == nullptr) {
+    throw std::out_of_range("no prioritizer for destination cluster: " +
+                            dest_cluster);
+  }
+  slot->set_kind(kind);
+}
+
 Vector AnpNode::unscaled_column() const {
   Vector rval(network_->nnodes(), 0.0);
   const std::vector<std::string> names = network_->node_names();
-  for (const auto& [cluster_name, pw] : node_prioritizers_) {
+  (void)names;
+  for (const auto& [cluster_name, slot] : node_prioritizers_) {
     (void)cluster_name;
-    if (pw.empty()) {
+    if (slot.empty()) {
       continue;
     }
-    const Vector local = pw.priorities();
-    for (std::size_t i = 0; i < pw.size(); ++i) {
-      const std::size_t gi = network_->node_index(pw.alternatives()[i]);
+    const Vector local = slot.priorities();
+    const auto& alts = slot.alternatives();
+    for (std::size_t i = 0; i < alts.size(); ++i) {
+      const std::size_t gi = network_->node_index(alts[i]);
       rval[gi] = local[i];
     }
   }
@@ -318,6 +434,12 @@ void AnpNetwork::set_node_comparison(const std::string& wrt_node,
   // Ensure connections exist so the pairwise table includes both alternatives.
   wrt.connect_to(const_cast<AnpNode*>(&na));
   wrt.connect_to(const_cast<AnpNode*>(&nb));
+  if (wrt.node_prioritizer_kind(na.cluster()->name()) ==
+      NodePrioritizerKind::Ratings) {
+    throw std::logic_error(
+        "cannot set pairwise comparison on a ratings prioritizer for cluster " +
+        na.cluster()->name());
+  }
   PairwiseJudgments* pw = wrt.node_pairwise(na.cluster()->name());
   if (pw == nullptr) {
     throw std::logic_error("missing node pairwise after connect");
@@ -335,6 +457,48 @@ void AnpNetwork::set_cluster_comparison(const std::string& wrt_cluster,
   wrt.cluster_connect(&ca);
   wrt.cluster_connect(&cb);
   wrt.cluster_pairwise().set_comparison(a, b, value);
+}
+
+void AnpNetwork::set_node_prioritizer_kind(const std::string& wrt_node,
+                                           const std::string& dest_cluster,
+                                           NodePrioritizerKind kind) {
+  node(wrt_node).set_node_prioritizer_kind(dest_cluster, kind);
+}
+
+void AnpNetwork::set_node_rating(const std::string& wrt_node,
+                                 const std::string& alt,
+                                 const std::string& category_id) {
+  AnpNode& wrt = node(wrt_node);
+  AnpNode& dest = node(alt);
+  wrt.connect_to(&dest);
+  const std::string dest_cluster = dest.cluster()->name();
+  if (wrt.node_prioritizer_kind(dest_cluster) != NodePrioritizerKind::Ratings) {
+    wrt.set_node_prioritizer_kind(dest_cluster, NodePrioritizerKind::Ratings);
+  }
+  RatingsPrioritizer* rt = wrt.node_ratings(dest_cluster);
+  if (rt == nullptr) {
+    throw std::logic_error("missing node ratings after kind switch");
+  }
+  rt->set_mode(RatingsPrioritizer::Mode::Categorical);
+  rt->set_rating(alt, category_id);
+}
+
+void AnpNetwork::set_node_rating_value(const std::string& wrt_node,
+                                       const std::string& alt,
+                                       double raw) {
+  AnpNode& wrt = node(wrt_node);
+  AnpNode& dest = node(alt);
+  wrt.connect_to(&dest);
+  const std::string dest_cluster = dest.cluster()->name();
+  if (wrt.node_prioritizer_kind(dest_cluster) != NodePrioritizerKind::Ratings) {
+    wrt.set_node_prioritizer_kind(dest_cluster, NodePrioritizerKind::Ratings);
+  }
+  RatingsPrioritizer* rt = wrt.node_ratings(dest_cluster);
+  if (rt == nullptr) {
+    throw std::logic_error("missing node ratings after kind switch");
+  }
+  rt->set_mode(RatingsPrioritizer::Mode::Numeric);
+  rt->set_value(alt, raw);
 }
 
 void AnpNetwork::remove_node(const std::string& name) {

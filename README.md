@@ -15,11 +15,12 @@ Numerical behavior is cross-checked against concepts from
 - Dense `Matrix` / `Vector`
 - Principal eigen (power iteration) and Saaty CI/CR
 - `PairwiseJudgments` for named comparison tables
-- `AnpNetwork` / `AnpCluster` / `AnpNode` with pairwise wiring
+- `RatingsPrioritizer` for categorical or numeric rating columns (with declarative score interpreters)
+- `AnpNetwork` / `AnpCluster` / `AnpNode` with pairwise or ratings wiring per dest cluster
 - Unscaled / cluster-weighted / scaled supermatrices
 - Limit matrix (calculus method, with hierarchy short-circuit)
 - Recursive subnetworks with additive / multiplicative / custom synthesis
-- Versioned JSON save/load (`anpcpp` format v1)
+- Versioned JSON save/load (`anpcpp` format v1; `node_prioritizers` with pairwise/ratings)
 
 ## Build and test
 
@@ -47,6 +48,7 @@ in [`docs/examples.md`](docs/examples.md) (published at
 - `network23` – fully connected 2-cluster ANP network with feedback
 - `hamburger_std` – SuperDecisions hamburger market-share network
 - `benefits_costs_subnet` – Benefits/Costs control network with subnetworks
+- `ratings_demo` – categorical + numeric `RatingsPrioritizer` columns toward Alternatives
 
 ```bash
 ./build/examples/tree134

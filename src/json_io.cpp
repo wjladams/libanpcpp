@@ -2,7 +2,10 @@
 
 #include <fstream>
 #include <sstream>
+#include <stdexcept>
+#include <type_traits>
 #include <utility>
+#include <variant>
 
 #include <nlohmann/json.hpp>
 
@@ -44,6 +47,182 @@ void pairwise_from_json(PairwiseJudgments& pw, const json& j) {
   }
 }
 
+json interpreter_to_json(const ScoreInterpreter& interpreter) {
+  return std::visit(
+      [](const auto& interp) -> json {
+        using T = std::decay_t<decltype(interp)>;
+        if constexpr (std::is_same_v<T, IdentityInterpreter>) {
+          return {{"kind", "identity"}};
+        } else if constexpr (std::is_same_v<T, DivideByMaxInterpreter>) {
+          return {{"kind", "divide_by_max"}};
+        } else if constexpr (std::is_same_v<T, DivideByConstantInterpreter>) {
+          return {{"kind", "divide_by_constant"},
+                  {"constant", interp.constant}};
+        } else if constexpr (std::is_same_v<T, MinMaxNormalizeInterpreter>) {
+          return {{"kind", "minmax"}};
+        } else if constexpr (std::is_same_v<T, PiecewiseLinearInterpreter>) {
+          json knots = json::array();
+          for (const auto& [x, y] : interp.knots) {
+            knots.push_back(json::array({x, y}));
+          }
+          return {{"kind", "piecewise_linear"}, {"knots", knots}};
+        }
+      },
+      interpreter);
+}
+
+ScoreInterpreter interpreter_from_json(const json& j) {
+  const std::string kind = j.value("kind", "identity");
+  if (kind == "identity") {
+    return IdentityInterpreter{};
+  }
+  if (kind == "divide_by_max") {
+    return DivideByMaxInterpreter{};
+  }
+  if (kind == "divide_by_constant") {
+    return DivideByConstantInterpreter{j.at("constant").get<double>()};
+  }
+  if (kind == "minmax") {
+    return MinMaxNormalizeInterpreter{};
+  }
+  if (kind == "piecewise_linear") {
+    PiecewiseLinearInterpreter pl;
+    for (const auto& knot : j.at("knots")) {
+      pl.knots.emplace_back(knot.at(0).get<double>(), knot.at(1).get<double>());
+    }
+    return pl;
+  }
+  throw std::invalid_argument("unknown score interpreter kind: " + kind);
+}
+
+json ratings_to_json(const RatingsPrioritizer& rt) {
+  json j;
+  j["type"] = "ratings";
+  j["alternatives"] = rt.alternatives();
+  j["mode"] =
+      rt.mode() == RatingsPrioritizer::Mode::Categorical ? "categorical"
+                                                         : "numeric";
+  if (rt.mode() == RatingsPrioritizer::Mode::Categorical) {
+    json cats = json::array();
+    for (const auto& c : rt.categories()) {
+      cats.push_back(
+          {{"id", c.id}, {"label", c.label}, {"value", c.value}});
+    }
+    j["categories"] = cats;
+    json ratings = json::object();
+    for (const auto& alt : rt.alternatives()) {
+      const auto r = rt.rating(alt);
+      if (r.has_value()) {
+        ratings[alt] = *r;
+      }
+    }
+    j["ratings"] = ratings;
+  } else {
+    j["interpreter"] = interpreter_to_json(rt.interpreter());
+    json values = json::object();
+    for (const auto& alt : rt.alternatives()) {
+      const auto v = rt.value(alt);
+      if (v.has_value()) {
+        values[alt] = *v;
+      }
+    }
+    j["values"] = values;
+  }
+  return j;
+}
+
+void ratings_from_json(RatingsPrioritizer& rt, const json& j) {
+  const auto alts = j.at("alternatives").get<std::vector<std::string>>();
+  for (const auto& a : alts) {
+    rt.add_alternative(a, /*ignore_existing=*/true);
+  }
+  const std::string mode = j.value("mode", "numeric");
+  if (mode == "categorical") {
+    rt.set_mode(RatingsPrioritizer::Mode::Categorical);
+    std::vector<RatingCategory> cats;
+    if (j.contains("categories")) {
+      for (const auto& cj : j.at("categories")) {
+        cats.push_back(RatingCategory{
+            cj.at("id").get<std::string>(),
+            cj.value("label", cj.at("id").get<std::string>()),
+            cj.at("value").get<double>(),
+        });
+      }
+    }
+    rt.set_categories(std::move(cats));
+    if (j.contains("ratings")) {
+      for (auto it = j.at("ratings").begin(); it != j.at("ratings").end();
+           ++it) {
+        rt.set_rating(it.key(), it.value().get<std::string>());
+      }
+    }
+  } else {
+    rt.set_mode(RatingsPrioritizer::Mode::Numeric);
+    if (j.contains("interpreter")) {
+      rt.set_interpreter(interpreter_from_json(j.at("interpreter")));
+    } else {
+      rt.set_interpreter(IdentityInterpreter{});
+    }
+    if (j.contains("values")) {
+      for (auto it = j.at("values").begin(); it != j.at("values").end();
+           ++it) {
+        rt.set_value(it.key(), it.value().get<double>());
+      }
+    }
+  }
+}
+
+json prioritizer_to_json(const NodePrioritizerSlot& slot) {
+  if (slot.kind == NodePrioritizerKind::Pairwise) {
+    json j = pairwise_to_json(slot.pairwise);
+    j["type"] = "pairwise";
+    return j;
+  }
+  return ratings_to_json(slot.ratings);
+}
+
+void connect_alts(AnpNetwork& net,
+                  AnpNode& node,
+                  const std::vector<std::string>& alts) {
+  for (const std::string& dest_name : alts) {
+    if (net.find_node(dest_name) != nullptr) {
+      net.node_connect(node.name(), dest_name);
+    }
+  }
+}
+
+void load_prioritizer_entry(AnpNetwork& net,
+                            AnpNode& node,
+                            const std::string& dest_cluster,
+                            const json& entry) {
+  const auto alts =
+      entry.at("alternatives").get<std::vector<std::string>>();
+  connect_alts(net, node, alts);
+
+  const std::string type = entry.value("type", "pairwise");
+  if (type == "ratings") {
+    node.set_node_prioritizer_kind(dest_cluster, NodePrioritizerKind::Ratings);
+    RatingsPrioritizer* rt = node.node_ratings(dest_cluster);
+    if (rt == nullptr) {
+      throw std::logic_error("missing ratings after kind switch");
+    }
+    // Slot already has alts from connect; refill from JSON cleanly.
+    *rt = RatingsPrioritizer{};
+    ratings_from_json(*rt, entry);
+  } else {
+    // Ensure pairwise (default after connect).
+    if (node.node_prioritizer_kind(dest_cluster) !=
+        NodePrioritizerKind::Pairwise) {
+      node.set_node_prioritizer_kind(dest_cluster,
+                                     NodePrioritizerKind::Pairwise);
+    }
+    PairwiseJudgments* pw = node.node_pairwise(dest_cluster);
+    if (pw != nullptr) {
+      pairwise_from_json(*pw, entry);
+    }
+  }
+}
+
 json network_to_json_obj(const AnpNetwork& net) {
   json j;
   j["clusters"] = json::array();
@@ -68,15 +247,14 @@ json network_to_json_obj(const AnpNetwork& net) {
         nj["x"] = nx;
         nj["y"] = ny;
       }
-      // One pairwise table per destination cluster this node connects to.
-      json pw_map = json::object();
+      json pri_map = json::object();
       for (const AnpCluster* dest : net.clusters()) {
-        const PairwiseJudgments* pw = n->node_pairwise(dest->name());
-        if (pw != nullptr && !pw->empty()) {
-          pw_map[dest->name()] = pairwise_to_json(*pw);
+        const NodePrioritizerSlot* slot = n->node_prioritizer(dest->name());
+        if (slot != nullptr && !slot->empty()) {
+          pri_map[dest->name()] = prioritizer_to_json(*slot);
         }
       }
-      nj["node_pairwise"] = pw_map;
+      nj["node_prioritizers"] = pri_map;
       if (n->has_subnetwork()) {
         nj["subnetwork"] = network_to_json_obj(*n->subnetwork());
       }
@@ -138,7 +316,7 @@ void populate_network(AnpNetwork& net, const json& j) {
     }
   }
 
-  // Pass 2: cluster/node pairwise data, implicit connections, and subnetworks.
+  // Pass 2: cluster/node prioritizers, implicit connections, and subnetworks.
   for (const auto& cj : j.at("clusters")) {
     AnpCluster& cluster = net.cluster(cj.at("name").get<std::string>());
     if (cj.contains("cluster_pairwise")) {
@@ -146,22 +324,16 @@ void populate_network(AnpNetwork& net, const json& j) {
     }
     for (const auto& nj : cj.at("nodes")) {
       AnpNode& node = net.node(nj.at("name").get<std::string>());
-      if (nj.contains("node_pairwise")) {
-        for (auto it = nj.at("node_pairwise").begin();
-             it != nj.at("node_pairwise").end(); ++it) {
-          const std::string dest_cluster = it.key();
-          const auto alts =
-              it.value().at("alternatives").get<std::vector<std::string>>();
-          // Restore graph edges from the alternatives listed in each table.
-          for (const std::string& dest_name : alts) {
-            if (net.find_node(dest_name) != nullptr) {
-              net.node_connect(node.name(), dest_name);
-            }
-          }
-          PairwiseJudgments* pw = node.node_pairwise(dest_cluster);
-          if (pw != nullptr) {
-            pairwise_from_json(*pw, it.value());
-          }
+      const json* pri = nullptr;
+      if (nj.contains("node_prioritizers")) {
+        pri = &nj.at("node_prioritizers");
+      } else if (nj.contains("node_pairwise")) {
+        // Legacy key: treat each entry as pairwise.
+        pri = &nj.at("node_pairwise");
+      }
+      if (pri != nullptr) {
+        for (auto it = pri->begin(); it != pri->end(); ++it) {
+          load_prioritizer_entry(net, node, it.key(), it.value());
         }
       }
       if (nj.contains("subnetwork")) {

@@ -15,12 +15,46 @@
 #include "anpcpp/limit_matrix.hpp"
 #include "anpcpp/matrix.hpp"
 #include "anpcpp/pairwise.hpp"
+#include "anpcpp/ratings.hpp"
 #include "anpcpp/synthesis.hpp"
 
 namespace anpcpp {
 
 class AnpNetwork;
 class AnpCluster;
+
+/** @brief Active prioritizer kind for a node → destination-cluster link. */
+enum class NodePrioritizerKind { Pairwise, Ratings };
+
+/**
+ * @brief Stores either pairwise or ratings judgments for one dest cluster.
+ */
+struct NodePrioritizerSlot {
+  NodePrioritizerKind kind = NodePrioritizerKind::Pairwise;
+  PairwiseJudgments pairwise;
+  RatingsPrioritizer ratings;
+
+  /** @return Alternative names from the active prioritizer. */
+  [[nodiscard]] const std::vector<std::string>& alternatives() const;
+  /** @return True if the active prioritizer has no alternatives. */
+  [[nodiscard]] bool empty() const;
+  /** @return True if @p name is an alternative in the active prioritizer. */
+  [[nodiscard]] bool has_alternative(const std::string& name) const;
+  /** @brief Adds @p name to the active prioritizer. */
+  void add_alternative(const std::string& name, bool ignore_existing = false);
+  /** @brief Removes @p name from the active prioritizer. */
+  void remove_alternative(const std::string& name,
+                          bool ignore_missing = false);
+  /** @return Local priorities for the unscaled column. */
+  [[nodiscard]] Vector priorities() const;
+  /**
+   * @brief Switches kind, preserving the alternative name list.
+   *
+   * Pairwise is reset to an identity diagonal; ratings start empty with
+   * numeric + Identity interpreter.
+   */
+  void set_kind(NodePrioritizerKind new_kind);
+};
 
 /**
  * @brief A decision element within a cluster (may own a subnetwork).
@@ -69,11 +103,44 @@ public:
 
   /**
    * @brief Pairwise judgments of this node w.r.t. nodes in @p dest_cluster.
-   * @return nullptr if no connection to that cluster.
+   * @return nullptr if no link, or if the link uses ratings.
    */
   [[nodiscard]] PairwiseJudgments* node_pairwise(const std::string& dest_cluster);
   /** @brief Const overload of @ref node_pairwise. */
   [[nodiscard]] const PairwiseJudgments* node_pairwise(
+      const std::string& dest_cluster) const;
+
+  /**
+   * @brief Ratings judgments of this node w.r.t. nodes in @p dest_cluster.
+   * @return nullptr if no link, or if the link uses pairwise.
+   */
+  [[nodiscard]] RatingsPrioritizer* node_ratings(const std::string& dest_cluster);
+  /** @brief Const overload of @ref node_ratings. */
+  [[nodiscard]] const RatingsPrioritizer* node_ratings(
+      const std::string& dest_cluster) const;
+
+  /**
+   * @brief Prioritizer kind for @p dest_cluster.
+   * @throws std::out_of_range if there is no link to that cluster.
+   */
+  [[nodiscard]] NodePrioritizerKind node_prioritizer_kind(
+      const std::string& dest_cluster) const;
+
+  /**
+   * @brief Sets prioritizer kind for an existing link to @p dest_cluster.
+   * @throws std::out_of_range if there is no link to that cluster.
+   */
+  void set_node_prioritizer_kind(const std::string& dest_cluster,
+                                 NodePrioritizerKind kind);
+
+  /**
+   * @brief Mutable prioritizer slot for @p dest_cluster, if present.
+   * @return nullptr if there is no link to that cluster.
+   */
+  [[nodiscard]] NodePrioritizerSlot* node_prioritizer(
+      const std::string& dest_cluster);
+  /** @brief Const overload of @ref node_prioritizer. */
+  [[nodiscard]] const NodePrioritizerSlot* node_prioritizer(
       const std::string& dest_cluster) const;
 
   /**
@@ -102,7 +169,7 @@ private:
   std::string name_;
   std::string description_;
   bool invert_ = false;
-  std::map<std::string, PairwiseJudgments> node_prioritizers_;
+  std::map<std::string, NodePrioritizerSlot> node_prioritizers_;
   std::unique_ptr<AnpNetwork> subnetwork_;
 };
 
@@ -250,6 +317,7 @@ public:
   void node_disconnect(const std::string& src, const std::string& dest);
   /**
    * @brief Sets node pairwise comparison (w.r.t. @p wrt_node's cluster links).
+   * @throws std::logic_error if the link uses ratings.
    */
   void set_node_comparison(const std::string& wrt_node,
                            const std::string& a,
@@ -260,6 +328,28 @@ public:
                               const std::string& a,
                               const std::string& b,
                               double value);
+
+  /**
+   * @brief Sets prioritizer kind for @p wrt_node → @p dest_cluster.
+   * @throws std::out_of_range if there is no link to that cluster.
+   */
+  void set_node_prioritizer_kind(const std::string& wrt_node,
+                                 const std::string& dest_cluster,
+                                 NodePrioritizerKind kind);
+
+  /**
+   * @brief Sets a categorical rating (ensures connection; switches to ratings).
+   */
+  void set_node_rating(const std::string& wrt_node,
+                       const std::string& alt,
+                       const std::string& category_id);
+
+  /**
+   * @brief Sets a numeric rating value (ensures connection; switches to ratings).
+   */
+  void set_node_rating_value(const std::string& wrt_node,
+                             const std::string& alt,
+                             double raw);
 
   /** @brief Removes a node and its connections. */
   void remove_node(const std::string& name);

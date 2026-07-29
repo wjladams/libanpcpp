@@ -104,12 +104,31 @@ inline void print_network_inputs(AnpNetwork& net) {
   bool any_node = false;
   for (AnpNode* node : net.nodes()) {
     for (AnpCluster* dest : net.clusters()) {
-      const PairwiseJudgments* pw = node->node_pairwise(dest->name());
-      if (pw != nullptr && pw->size() >= 2) {
-        any_node = true;
+      const NodePrioritizerSlot* slot = node->node_prioritizer(dest->name());
+      if (slot == nullptr || slot->empty() || slot->alternatives().size() < 1) {
+        continue;
+      }
+      any_node = true;
+      if (slot->kind == NodePrioritizerKind::Pairwise &&
+          slot->pairwise.size() >= 2) {
         print_pairwise("Nodes in '" + dest->name() +
                            "' compared wrt node '" + node->name() + "'",
-                       *pw);
+                       slot->pairwise);
+        std::cout << "\n";
+      } else if (slot->kind == NodePrioritizerKind::Ratings) {
+        const RatingsPrioritizer& rt = slot->ratings;
+        std::cout << "Ratings in '" << dest->name() << "' wrt node '"
+                  << node->name() << "' ("
+                  << (rt.mode() == RatingsPrioritizer::Mode::Categorical
+                          ? "categorical"
+                          : "numeric")
+                  << ")\n";
+        const Vector scores = rt.scores();
+        const Vector pris = rt.priorities();
+        for (std::size_t i = 0; i < rt.size(); ++i) {
+          std::cout << "  " << rt.alternatives()[i] << ": score="
+                    << scores[i] << "  priority=" << pris[i] << "\n";
+        }
         std::cout << "\n";
       }
     }
