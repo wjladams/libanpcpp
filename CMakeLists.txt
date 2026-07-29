@@ -20,6 +20,7 @@ endif()
 
 option(ANPCPP_BUILD_TESTS "Build unit tests" ${ANPCPP_IS_TOP_LEVEL})
 option(ANPCPP_BUILD_EXAMPLES "Build example programs" ${ANPCPP_IS_TOP_LEVEL})
+option(ANPCPP_BUILD_DOCS "Build Doxygen API documentation" ${ANPCPP_IS_TOP_LEVEL})
 option(ANPCPP_INSTALL "Generate install rules" ${ANPCPP_IS_TOP_LEVEL})
 
 include(FetchContent)
@@ -71,6 +72,10 @@ endif()
 
 if(ANPCPP_BUILD_EXAMPLES)
   add_subdirectory(examples)
+endif()
+
+if(ANPCPP_BUILD_DOCS)
+  include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/Doxygen.cmake")
 endif()
 
 if(ANPCPP_INSTALL)
