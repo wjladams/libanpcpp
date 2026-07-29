@@ -176,6 +176,20 @@ void RatingsPrioritizer::remove_alternative(const std::string& name,
   numeric_.erase(numeric_.begin() + static_cast<std::ptrdiff_t>(idx));
 }
 
+void RatingsPrioritizer::rename_alternative(const std::string& old_name,
+                                            const std::string& new_name) {
+  if (old_name == new_name) return;
+  if (new_name.empty()) {
+    throw std::invalid_argument("ratings alternative name must be non-empty");
+  }
+  const std::size_t idx = index_of(old_name);
+  if (has_alternative(new_name)) {
+    throw std::invalid_argument("ratings alternative already exists: " +
+                                new_name);
+  }
+  alternatives_[idx] = new_name;
+}
+
 void RatingsPrioritizer::set_categories(
     std::vector<RatingCategory> categories) {
   for (const auto& c : categories) {

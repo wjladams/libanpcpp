@@ -45,6 +45,9 @@ struct NodePrioritizerSlot {
   /** @brief Removes @p name from the active prioritizer. */
   void remove_alternative(const std::string& name,
                           bool ignore_missing = false);
+  /** @brief Renames an alternative in the active prioritizer. */
+  void rename_alternative(const std::string& old_name,
+                          const std::string& new_name);
   /** @return Local priorities for the unscaled column. */
   [[nodiscard]] Vector priorities() const;
   /**
@@ -355,6 +358,16 @@ public:
   void remove_node(const std::string& name);
   /** @brief Removes a cluster and its nodes. */
   void remove_cluster(const std::string& name);
+  /**
+   * @brief Renames a node network-wide (index, judgments, layout).
+   * @throws std::invalid_argument if unknown or @p new_name already exists.
+   */
+  void rename_node(const std::string& old_name, const std::string& new_name);
+  /**
+   * @brief Renames a cluster network-wide (judgment keys, layout).
+   * @throws std::invalid_argument if unknown or @p new_name already exists.
+   */
+  void rename_cluster(const std::string& old_name, const std::string& new_name);
   /** @brief Clears a node's subnetwork. */
   void clear_subnetwork(const std::string& node_name);
 

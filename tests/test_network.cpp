@@ -73,6 +73,56 @@ TEST(NetworkTest, MoveNodeReordersWithinCluster) {
   EXPECT_THROW(net.move_node("Cost", 99), std::out_of_range);
 }
 
+TEST(NetworkTest, RenameNodeUpdatesJudgmentsAndIndex) {
+  AnpNetwork net;
+  net.add_cluster("Criteria");
+  net.add_node("Criteria", "Cost");
+  net.add_node("Alternatives", "A");
+  net.add_node("Alternatives", "B");
+  net.node_connect("Cost", "A");
+  net.node_connect("Cost", "B");
+  net.set_node_comparison("Cost", "A", "B", 3.0);
+  net.set_node_position("A", 1.0, 2.0);
+
+  net.rename_node("A", "Alpha");
+  EXPECT_EQ(net.find_node("A"), nullptr);
+  EXPECT_NE(net.find_node("Alpha"), nullptr);
+  EXPECT_TRUE(net.node("Cost").is_connected_to(&net.node("Alpha")));
+  const auto* pw = net.node("Cost").node_pairwise("Alternatives");
+  ASSERT_NE(pw, nullptr);
+  EXPECT_NEAR(pw->comparison("Alpha", "B"), 3.0, 1e-12);
+  double x = 0, y = 0;
+  EXPECT_TRUE(net.node_position("Alpha", x, y));
+  EXPECT_DOUBLE_EQ(x, 1.0);
+  EXPECT_DOUBLE_EQ(y, 2.0);
+  EXPECT_THROW(net.rename_node("Alpha", "B"), std::invalid_argument);
+}
+
+TEST(NetworkTest, RenameClusterRekeysLinks) {
+  AnpNetwork net;
+  net.add_cluster("Criteria");
+  net.add_node("Criteria", "Cost");
+  net.add_node("Alternatives", "A");
+  net.add_node("Alternatives", "B");
+  net.node_connect("Cost", "A");
+  net.node_connect("Cost", "B");
+  net.set_node_comparison("Cost", "A", "B", 2.0);
+  net.set_cluster_position("Alternatives", 10.0, 20.0);
+
+  net.rename_cluster("Alternatives", "Alts");
+  EXPECT_EQ(net.find_cluster("Alternatives"), nullptr);
+  EXPECT_NE(net.find_cluster("Alts"), nullptr);
+  EXPECT_EQ(net.alternatives_cluster(), &net.cluster("Alts"));
+  const auto* pw = net.node("Cost").node_pairwise("Alts");
+  ASSERT_NE(pw, nullptr);
+  EXPECT_NEAR(pw->comparison("A", "B"), 2.0, 1e-12);
+  EXPECT_TRUE(net.cluster("Criteria").cluster_pairwise().has_alternative("Alts"));
+  double x = 0, y = 0;
+  EXPECT_TRUE(net.cluster_position("Alts", x, y));
+  EXPECT_DOUBLE_EQ(x, 10.0);
+  EXPECT_DOUBLE_EQ(y, 20.0);
+}
+
 TEST(NetworkTest, NodeConnectCreatesClusterLink) {
   AnpNetwork net;
   net.add_cluster("Criteria");

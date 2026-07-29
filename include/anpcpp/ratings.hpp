@@ -130,6 +130,13 @@ public:
   void remove_alternative(const std::string& name,
                           bool ignore_missing = false);
 
+  /**
+   * @brief Renames an alternative in place (keeps rating values).
+   * @throws std::invalid_argument if @p old_name is missing or @p new_name clashes.
+   */
+  void rename_alternative(const std::string& old_name,
+                          const std::string& new_name);
+
   /** @return Current storage mode. */
   [[nodiscard]] Mode mode() const noexcept { return mode_; }
   /** @brief Sets storage mode (does not clear the other mode's data). */

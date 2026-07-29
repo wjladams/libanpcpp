@@ -85,6 +85,20 @@ void PairwiseJudgments::remove_alternative(const std::string& name,
                       static_cast<std::ptrdiff_t>(idx));
 }
 
+void PairwiseJudgments::rename_alternative(const std::string& old_name,
+                                           const std::string& new_name) {
+  if (old_name == new_name) return;
+  if (new_name.empty()) {
+    throw std::invalid_argument("pairwise alternative name must be non-empty");
+  }
+  const std::size_t idx = index_of(old_name);
+  if (has_alternative(new_name)) {
+    throw std::invalid_argument("pairwise alternative already exists: " +
+                                new_name);
+  }
+  alternatives_[idx] = new_name;
+}
+
 void PairwiseJudgments::set_comparison(std::size_t i,
                                        std::size_t j,
                                        double value) {

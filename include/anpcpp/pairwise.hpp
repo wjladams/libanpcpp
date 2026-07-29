@@ -63,6 +63,13 @@ public:
   void remove_alternative(const std::string& name, bool ignore_missing = false);
 
   /**
+   * @brief Renames an alternative in place (keeps matrix values).
+   * @throws std::invalid_argument if @p old_name is missing or @p new_name clashes.
+   */
+  void rename_alternative(const std::string& old_name,
+                          const std::string& new_name);
+
+  /**
    * @brief Sets comparison by index.
    * @param i Row index.
    * @param j Column index.

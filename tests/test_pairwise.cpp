@@ -44,6 +44,15 @@ TEST(PairwiseTest, IncompleteUsesHarker) {
   EXPECT_GT(p[0], p[2]);
 }
 
+TEST(PairwiseTest, RenameAlternativeKeepsMatrix) {
+  PairwiseJudgments pw({"A", "B", "C"});
+  pw.set_comparison(0, 1, 3.0);
+  pw.rename_alternative("B", "Beta");
+  EXPECT_EQ(pw.alternatives(), (std::vector<std::string>{"A", "Beta", "C"}));
+  EXPECT_NEAR(pw.comparison("A", "Beta"), 3.0, 1e-12);
+  EXPECT_THROW(pw.rename_alternative("A", "C"), std::invalid_argument);
+}
+
 TEST(PairwiseTest, SingleAlternativeIsOne) {
   PairwiseJudgments pw({"Only"});
   const auto p = pw.priorities();

@@ -46,6 +46,15 @@ void NodePrioritizerSlot::remove_alternative(const std::string& name,
   }
 }
 
+void NodePrioritizerSlot::rename_alternative(const std::string& old_name,
+                                             const std::string& new_name) {
+  if (kind == NodePrioritizerKind::Pairwise) {
+    pairwise.rename_alternative(old_name, new_name);
+  } else {
+    ratings.rename_alternative(old_name, new_name);
+  }
+}
+
 Vector NodePrioritizerSlot::priorities() const {
   return kind == NodePrioritizerKind::Pairwise ? pairwise.priorities()
                                                : ratings.priorities();
@@ -547,6 +556,85 @@ void AnpNetwork::remove_cluster(const std::string& name) {
       clusters_.erase(it);
       return;
     }
+  }
+}
+
+void AnpNetwork::rename_node(const std::string& old_name,
+                             const std::string& new_name) {
+  if (old_name == new_name) {
+    return;
+  }
+  if (new_name.empty()) {
+    throw std::invalid_argument("node name must be non-empty");
+  }
+  AnpNode* n = find_node(old_name);
+  if (n == nullptr) {
+    throw std::invalid_argument("unknown node: " + old_name);
+  }
+  if (find_node(new_name) != nullptr) {
+    throw std::invalid_argument("node already exists: " + new_name);
+  }
+
+  unregister_node(old_name);
+  n->name_ = new_name;
+  register_node(n);
+
+  const auto pos_it = node_positions_.find(old_name);
+  if (pos_it != node_positions_.end()) {
+    const auto pos = pos_it->second;
+    node_positions_.erase(pos_it);
+    node_positions_[new_name] = pos;
+  }
+
+  for (AnpNode* other : nodes()) {
+    for (auto& [cluster_name, slot] : other->node_prioritizers_) {
+      (void)cluster_name;
+      if (slot.has_alternative(old_name)) {
+        slot.rename_alternative(old_name, new_name);
+      }
+    }
+  }
+}
+
+void AnpNetwork::rename_cluster(const std::string& old_name,
+                                const std::string& new_name) {
+  if (old_name == new_name) {
+    return;
+  }
+  if (new_name.empty()) {
+    throw std::invalid_argument("cluster name must be non-empty");
+  }
+  AnpCluster* c = find_cluster(old_name);
+  if (c == nullptr) {
+    throw std::invalid_argument("unknown cluster: " + old_name);
+  }
+  if (find_cluster(new_name) != nullptr) {
+    throw std::invalid_argument("cluster already exists: " + new_name);
+  }
+
+  c->name_ = new_name;
+
+  for (AnpNode* n : nodes()) {
+    auto it = n->node_prioritizers_.find(old_name);
+    if (it == n->node_prioritizers_.end()) {
+      continue;
+    }
+    NodePrioritizerSlot slot = std::move(it->second);
+    n->node_prioritizers_.erase(it);
+    n->node_prioritizers_.emplace(new_name, std::move(slot));
+  }
+
+  for (auto& other : clusters_) {
+    if (other->prioritizer_.has_alternative(old_name)) {
+      other->prioritizer_.rename_alternative(old_name, new_name);
+    }
+  }
+
+  const auto pos_it = cluster_positions_.find(old_name);
+  if (pos_it != cluster_positions_.end()) {
+    const auto pos = pos_it->second;
+    cluster_positions_.erase(pos_it);
+    cluster_positions_[new_name] = pos;
   }
 }
 
