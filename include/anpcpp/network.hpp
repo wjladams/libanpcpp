@@ -494,7 +494,7 @@ public:
    * @brief Smart-\(p_0\) marginal influence score for each node (row).
    *
    * Per row: L1 of absolute per-alternative smart marginals; representative
-   * smart \(p_0\) is that of the alternative with largest \(|\mathrm{marginal}|\).
+   * smart \(p_0\) is that of the alternative with largest absolute marginal.
    */
   [[nodiscard]] std::vector<InfluenceMarginalEntry> influence_marginal_smart(
       double delta = 1e-6,

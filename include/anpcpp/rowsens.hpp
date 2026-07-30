@@ -33,9 +33,9 @@ enum class P0ModeKind {
  */
 struct P0Mode {
   P0ModeKind kind = P0ModeKind::Direct;
-  /** Used when @ref kind is Direct. */
+  /** Used when kind is Direct. */
   double direct = 0.5;
-  /** Alternative/node index made continuous when @ref kind is Smart. */
+  /** Alternative/node index made continuous when kind is Smart. */
   std::size_t smart_alt = 0;
 
   /** @return Direct mode with the given \(p_0\). */
@@ -117,6 +117,11 @@ struct InfluenceTotalEntry {
 
 /**
  * @brief Smart resting \(p_0\) making score of @p cont_alt continuous at \(p_0\).
+ * @param mat Scaled (column-stochastic) supermatrix.
+ * @param row Row index (Wrt node).
+ * @param cont_alt Alternative/node index made continuous.
+ * @param cluster_nodes Cluster row indices (empty = full matrix).
+ * @param options Limit-matrix options.
  */
 [[nodiscard]] double smart_p0(
     const Matrix& mat,
@@ -127,6 +132,13 @@ struct InfluenceTotalEntry {
 
 /**
  * @brief Priorities after row adjust (pyanp row_adjust_priority, normalize_to_orig).
+ * @param mat Scaled (column-stochastic) supermatrix.
+ * @param row Row index (Wrt node).
+ * @param p Sensitivity parameter in \([0,1]\).
+ * @param p0mode Resting-value mode.
+ * @param cluster_nodes Cluster row indices (empty = full matrix).
+ * @param options Limit-matrix options.
+ * @param normalize_to_orig If true, rescale so the Wrt entry matches the original.
  */
 [[nodiscard]] Vector priority_after_row_adjust(
     const Matrix& mat,
@@ -139,7 +151,14 @@ struct InfluenceTotalEntry {
 
 /**
  * @brief Marginal influence (finite difference) at a direct \(p_0\).
+ * @param mat Scaled (column-stochastic) supermatrix.
+ * @param row Row index (Wrt node).
+ * @param p0 Direct resting parameter.
  * @param left_or_right &lt;0 LHS, &gt;0 RHS, 0 average.
+ * @param delta Finite-difference step.
+ * @param influence_nodes Nodes whose scores are reported (empty = all but @p row).
+ * @param cluster_nodes Cluster row indices (empty = full matrix).
+ * @param options Limit-matrix options.
  */
 [[nodiscard]] Vector influence_marginal(
     const Matrix& mat,
@@ -153,6 +172,13 @@ struct InfluenceTotalEntry {
 
 /**
  * @brief Per-alternative smart-\(p_0\) marginal influence (single value each).
+ * @param mat Scaled (column-stochastic) supermatrix.
+ * @param row Row index (Wrt node).
+ * @param influence_nodes Alternative indices to score.
+ * @param names Display names aligned with @p influence_nodes.
+ * @param cluster_nodes Cluster row indices (empty = full matrix).
+ * @param delta Finite-difference step.
+ * @param options Limit-matrix options.
  */
 [[nodiscard]] std::vector<InfluenceMarginalEntry> influence_marginal_smart(
     const Matrix& mat,
@@ -165,6 +191,15 @@ struct InfluenceTotalEntry {
 
 /**
  * @brief Raw fixed-distance influence table (original / up / down scores).
+ * @param mat Scaled (column-stochastic) supermatrix.
+ * @param row Row index (Wrt node).
+ * @param influence_nodes Alternative indices to score.
+ * @param names Display names aligned with @p influence_nodes.
+ * @param delta_up Upward change from @p p0.
+ * @param delta_down Downward change from @p p0.
+ * @param p0 Resting parameter (typically 0.5).
+ * @param cluster_nodes Cluster row indices (empty = full matrix).
+ * @param options Limit-matrix options.
  */
 [[nodiscard]] std::vector<InfluenceRawEntry> influence_raw(
     const Matrix& mat,
@@ -179,6 +214,14 @@ struct InfluenceTotalEntry {
 
 /**
  * @brief Rank influence score per alternative (max of upper/lower searches).
+ * @param mat Scaled (column-stochastic) supermatrix.
+ * @param row Row index (Wrt node).
+ * @param influence_nodes Alternative indices to score.
+ * @param names Display names aligned with @p influence_nodes.
+ * @param cluster_nodes Cluster row indices (empty = full matrix).
+ * @param error Binary-search tolerance on \(p\).
+ * @param round_to_decimal Decimals used when comparing ranks.
+ * @param options Limit-matrix options.
  */
 [[nodiscard]] std::vector<InfluenceRankEntry> influence_rank(
     const Matrix& mat,
@@ -195,6 +238,14 @@ struct InfluenceTotalEntry {
  *
  * Matches pyanp `influence_fixed` for a single row, then aggregates to Total /
  * Max Alt Change as in the multi-row case.
+ *
+ * @param mat Scaled (column-stochastic) supermatrix.
+ * @param row Row index (Wrt node).
+ * @param influence_nodes Alternative indices to score.
+ * @param delta Fixed upward change from @p p0.
+ * @param p0 Resting parameter (typically 0.5).
+ * @param cluster_nodes Cluster row indices (empty = full matrix).
+ * @param options Limit-matrix options.
  */
 [[nodiscard]] InfluenceTotalEntry influence_total_row(
     const Matrix& mat,
@@ -207,6 +258,14 @@ struct InfluenceTotalEntry {
 
 /**
  * @brief Per-row total influence (pyanp multi-row `influence_fixed` Totals).
+ * @param mat Scaled (column-stochastic) supermatrix.
+ * @param rows Row indices to score.
+ * @param row_names Display names aligned with @p rows.
+ * @param influence_nodes Alternative indices used for each row's diffs.
+ * @param delta Fixed upward change from @p p0.
+ * @param p0 Resting parameter (typically 0.5).
+ * @param cluster_nodes Cluster row indices (empty = full matrix).
+ * @param options Limit-matrix options.
  */
 [[nodiscard]] std::vector<InfluenceTotalEntry> influence_total(
     const Matrix& mat,
