@@ -20,11 +20,15 @@ TEST(JsonIoTest, RoundTripFlatNetwork) {
   net.set_node_comparison("Price", "A", "B", 2.0);
   net.set_cluster_position("Criteria", 10, 20);
   net.set_node_position("Price", 1, 2);
+  net.set_name("FlatDemo");
+  net.set_description("flat network description");
 
   const std::string json = network_to_json(net);
   EXPECT_NE(json.find("node_prioritizers"), std::string::npos);
   auto loaded = network_from_json(json);
   ASSERT_NE(loaded, nullptr);
+  EXPECT_EQ(loaded->name(), "FlatDemo");
+  EXPECT_EQ(loaded->description(), "flat network description");
   EXPECT_EQ(loaded->nclusters(), net.nclusters());
   EXPECT_EQ(loaded->nnodes(), net.nnodes());
   EXPECT_TRUE(loaded->node("Price").is_connected_to(&loaded->node("A")));

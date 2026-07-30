@@ -143,6 +143,11 @@ TEST(NetworkTest, Descriptions) {
   net.node("Cost").set_description("price");
   EXPECT_EQ(net.cluster("Criteria").description(), "top criteria");
   EXPECT_EQ(net.node("Cost").description(), "price");
+
+  net.set_name("Demo");
+  net.set_description("network notes");
+  EXPECT_EQ(net.name(), "Demo");
+  EXPECT_EQ(net.description(), "network notes");
 }
 
 // Classic AHP: one Criteria node comparing two alts with 2:1 preference.

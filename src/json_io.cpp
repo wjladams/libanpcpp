@@ -225,6 +225,12 @@ void load_prioritizer_entry(AnpNetwork& net,
 
 json network_to_json_obj(const AnpNetwork& net) {
   json j;
+  if (!net.name().empty()) {
+    j["name"] = net.name();
+  }
+  if (!net.description().empty()) {
+    j["description"] = net.description();
+  }
   j["clusters"] = json::array();
   for (const AnpCluster* c : net.clusters()) {
     json cj;
@@ -276,6 +282,12 @@ json network_to_json_obj(const AnpNetwork& net) {
 }
 
 void populate_network(AnpNetwork& net, const json& j) {
+  if (j.contains("name")) {
+    net.set_name(j.at("name").get<std::string>());
+  }
+  if (j.contains("description")) {
+    net.set_description(j.at("description").get<std::string>());
+  }
   // Pass 1: create clusters/nodes and layout metadata so names exist before
   // we wire connections and load pairwise matrices in pass 2.
   for (const auto& cj : j.at("clusters")) {

@@ -372,6 +372,20 @@ public:
   /** @brief Clears a node's subnetwork. */
   void clear_subnetwork(const std::string& node_name);
 
+  /** @return Optional display name (empty means UI default such as "Root"). */
+  [[nodiscard]] const std::string& name() const noexcept { return name_; }
+  /** @brief Sets the network display name. */
+  void set_name(std::string name) { name_ = std::move(name); }
+
+  /** @return Optional description text. */
+  [[nodiscard]] const std::string& description() const noexcept {
+    return description_;
+  }
+  /** @brief Sets the network description. */
+  void set_description(std::string description) {
+    description_ = std::move(description);
+  }
+
   /** @return Synthesis options for subnetwork score combination. */
   [[nodiscard]] const SynthesisOptions& synthesis_options() const noexcept {
     return synthesis_;
@@ -534,6 +548,8 @@ private:
   std::vector<std::unique_ptr<AnpCluster>> clusters_;
   AnpCluster* alts_cluster_ = nullptr;
   std::unordered_map<std::string, AnpNode*> node_index_;
+  std::string name_;
+  std::string description_;
   SynthesisOptions synthesis_;
   std::map<std::string, std::pair<double, double>> cluster_positions_;
   std::map<std::string, std::pair<double, double>> node_positions_;
