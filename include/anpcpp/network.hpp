@@ -16,6 +16,7 @@
 #include "anpcpp/matrix.hpp"
 #include "anpcpp/pairwise.hpp"
 #include "anpcpp/ratings.hpp"
+#include "anpcpp/rowsens.hpp"
 #include "anpcpp/synthesis.hpp"
 
 namespace anpcpp {
@@ -448,6 +449,53 @@ public:
   [[nodiscard]] std::map<std::string, double> priority_map(
       const LimitMatrixOptions& options = {}) const;
 
+  /**
+   * @brief Alternative scores after ANP row sensitivity at parameter @p p.
+   *
+   * Pipeline: scaled SM → row_adjust → limit → global priorities; if this
+   * network has subnetworks, those global priorities weight subnet synthesis
+   * (same as @ref priority_map, but with the adjusted parent limit).
+   */
+  [[nodiscard]] std::map<std::string, double> priority_map_at_p(
+      const std::string& wrt_node,
+      double p,
+      const P0Mode& p0mode = P0Mode::Direct(0.5),
+      const LimitMatrixOptions& options = {}) const;
+
+  /** @brief Ordered alternative scores from @ref priority_map_at_p. */
+  [[nodiscard]] Vector priority_at_p(
+      const std::string& wrt_node,
+      double p,
+      const P0Mode& p0mode = P0Mode::Direct(0.5),
+      const LimitMatrixOptions& options = {}) const;
+
+  /**
+   * @brief Raw fixed-distance influence on alternative scores (incl. subnets).
+   */
+  [[nodiscard]] std::vector<InfluenceRawEntry> influence_raw(
+      const std::string& wrt_node,
+      double delta_up = 0.1,
+      double delta_down = 0.1,
+      double p0 = 0.5,
+      const LimitMatrixOptions& options = {}) const;
+
+  /**
+   * @brief Rank influence on alternative scores (incl. subnets).
+   */
+  [[nodiscard]] std::vector<InfluenceRankEntry> influence_rank(
+      const std::string& wrt_node,
+      double error = 1e-5,
+      int round_to_decimal = 5,
+      const LimitMatrixOptions& options = {}) const;
+
+  /**
+   * @brief Smart-\(p_0\) marginal influence on alternative scores.
+   */
+  [[nodiscard]] std::vector<InfluenceMarginalEntry> influence_marginal_smart(
+      const std::string& wrt_node,
+      double delta = 1e-6,
+      const LimitMatrixOptions& options = {}) const;
+
 private:
   friend class AnpNode;
   friend class AnpCluster;
@@ -455,6 +503,16 @@ private:
   void register_node(AnpNode* node);
   void unregister_node(const std::string& name);
   [[nodiscard]] std::size_t node_index(const std::string& name) const;
+  /** @return Global indices of nodes in @p node_name's cluster. */
+  [[nodiscard]] std::vector<std::size_t> cluster_row_indices(
+      const std::string& node_name) const;
+
+  /**
+   * @brief Subnet synthesis using a supplied parent global-priority vector.
+   */
+  [[nodiscard]] Vector subnet_synthesize_from_global(
+      const Vector& gp,
+      const LimitMatrixOptions& options) const;
 
   [[nodiscard]] Vector subnet_synthesize(
       const LimitMatrixOptions& options) const;

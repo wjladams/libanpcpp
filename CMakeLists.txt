@@ -43,6 +43,7 @@ add_library(anpcpp STATIC
   src/network.cpp
   src/synthesis.cpp
   src/json_io.cpp
+  src/rowsens.cpp
 )
 add_library(anpcpp::anpcpp ALIAS anpcpp)
 

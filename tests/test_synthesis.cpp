@@ -62,6 +62,39 @@ TEST(SynthesisTest, CustomExpressionPerAlt) {
   EXPECT_NEAR(out.at("B"), 0.5 / 3.5, 1e-9);
 }
 
+TEST(SynthesisTest, CustomWeightedBocrChangesWithWeights) {
+  // Unweighted multiplicative BOCR rankings are invariant to scaling each
+  // factor by a weight; weighted form uses score^w so control priorities matter.
+  std::map<std::string, std::map<std::string, double>> scores{
+      {"Benefits", {{"A", 0.9}, {"B", 0.1}}},
+      {"Opportunities", {{"A", 0.2}, {"B", 0.8}}},
+      {"Costs", {{"A", 0.5}, {"B", 0.5}}},
+      {"Risks", {{"A", 0.5}, {"B", 0.5}}},
+  };
+  const std::vector<std::string> alts{"A", "B"};
+  const std::string expr = "Benefits * Opportunities / (Costs * Risks)";
+
+  std::map<std::string, double> equal{
+      {"Benefits", 0.25},
+      {"Opportunities", 0.25},
+      {"Costs", 0.25},
+      {"Risks", 0.25},
+  };
+  std::map<std::string, double> heavy_benefits{
+      {"Benefits", 0.88},
+      {"Opportunities", 0.04},
+      {"Costs", 0.04},
+      {"Risks", 0.04},
+  };
+
+  const auto eq = synthesize_custom(expr, scores, alts, equal);
+  const auto hb = synthesize_custom(expr, scores, alts, heavy_benefits);
+  const auto uw = synthesize_custom(expr, scores, alts);
+  // Equal exponents preserve unweighted ranking (monotonic transform).
+  EXPECT_EQ(eq.at("A") > eq.at("B"), uw.at("A") > uw.at("B"));
+  EXPECT_GT(std::abs(hb.at("A") - eq.at("A")), 1e-6);
+}
+
 namespace {
 
 AnpNetwork make_two_subnet_parent() {

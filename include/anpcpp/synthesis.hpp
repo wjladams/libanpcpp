@@ -69,14 +69,27 @@ public:
 /**
  * @brief Custom expression synthesis per alternative.
  *
+ * When @p subnet_weights has positive mass over the subnet hosts used in
+ * @p alt_scores, each host variable is bound to @c score^w (normalized
+ * weight). That is the SuperDecisions Ideal / weighted-BOCR form: for
+ * @c "Benefits * Opportunities / (Costs * Risks)" it evaluates
+ * @c B^wB * O^wO / (C^wC * R^wR). Plain @c weight*score would cancel in
+ * multiplicative formulas after normalization, so row sensitivity could
+ * not change rankings.
+ *
+ * When weights are empty or all zero, variables bind to the raw scores
+ * (legacy unweighted custom formulas).
+ *
  * @param expression Arithmetic expression with subnet-host names as variables.
  * @param alt_scores Per-subnet alternative scores.
  * @param alt_order Output ordering of alternatives.
+ * @param subnet_weights Weight per control subnet (host node name -> weight).
  */
 [[nodiscard]] std::map<std::string, double> synthesize_custom(
     const std::string& expression,
     const std::map<std::string, std::map<std::string, double>>& alt_scores,
-    const std::vector<std::string>& alt_order);
+    const std::vector<std::string>& alt_order,
+    const std::map<std::string, double>& subnet_weights = {});
 
 /**
  * @brief Dispatches on @ref SynthesisOptions::kind.

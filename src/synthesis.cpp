@@ -230,18 +230,47 @@ std::map<std::string, double> synthesize_multiplicative(
 std::map<std::string, double> synthesize_custom(
     const std::string& expression,
     const std::map<std::string, std::map<std::string, double>>& alt_scores,
-    const std::vector<std::string>& alt_order) {
+    const std::vector<std::string>& alt_order,
+    const std::map<std::string, double>& subnet_weights) {
   if (expression.empty()) {
     throw SynthesisError("custom synthesis expression is empty");
   }
 
+  double weight_total = 0.0;
+  for (const auto& [name, _] : alt_scores) {
+    (void)_;
+    const auto wit = subnet_weights.find(name);
+    if (wit != subnet_weights.end() && wit->second > 0.0) {
+      weight_total += wit->second;
+    }
+  }
+  const bool use_weights = weight_total > 0.0;
+
   std::map<std::string, double> rval;
   for (const std::string& alt : alt_order) {
     // Bind each subnet name to that alternative's score for this alt row.
+    // With weights: score^w (normalized), so multiplicative custom formulas
+    // such as BOCR respond to control-criteria priorities.
     std::map<std::string, double> vars;
     for (const auto& [subnet_name, scores] : alt_scores) {
       const auto it = scores.find(alt);
-      vars[subnet_name] = it == scores.end() ? 0.0 : it->second;
+      const double score = it == scores.end() ? 0.0 : it->second;
+      if (!use_weights) {
+        vars[subnet_name] = score;
+        continue;
+      }
+      double w = 0.0;
+      const auto wit = subnet_weights.find(subnet_name);
+      if (wit != subnet_weights.end() && wit->second > 0.0) {
+        w = wit->second / weight_total;
+      }
+      if (w == 0.0) {
+        vars[subnet_name] = 1.0;  // neutral factor when weight vanishes
+      } else if (score <= 0.0) {
+        vars[subnet_name] = 0.0;
+      } else {
+        vars[subnet_name] = std::pow(score, w);
+      }
     }
     try {
       rval[alt] = eval_expression(expression, vars);
@@ -264,7 +293,8 @@ std::map<std::string, double> synthesize(
     case SynthesisKind::Multiplicative:
       return synthesize_multiplicative(subnet_weights, alt_scores);
     case SynthesisKind::Custom:
-      return synthesize_custom(options.custom_expr, alt_scores, alt_order);
+      return synthesize_custom(options.custom_expr, alt_scores, alt_order,
+                               subnet_weights);
   }
   return synthesize_additive(subnet_weights, alt_scores);
 }

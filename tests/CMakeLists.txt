@@ -23,6 +23,7 @@ add_executable(anpcpp_tests
   test_subnet.cpp
   test_synthesis.cpp
   test_json_io.cpp
+  test_rowsens.cpp
 )
 
 target_link_libraries(anpcpp_tests
