@@ -480,20 +480,34 @@ public:
       const LimitMatrixOptions& options = {}) const;
 
   /**
-   * @brief Rank influence on alternative scores (incl. subnets).
+   * @brief Rank influence score for each node (row) in this network.
+   *
+   * No Wrt selector: for each node, measures how far \(p\) must move from 0.5
+   * before alternative rankings change when that node's row is adjusted.
    */
   [[nodiscard]] std::vector<InfluenceRankEntry> influence_rank(
-      const std::string& wrt_node,
       double error = 1e-5,
       int round_to_decimal = 5,
       const LimitMatrixOptions& options = {}) const;
 
   /**
-   * @brief Smart-\(p_0\) marginal influence on alternative scores.
+   * @brief Smart-\(p_0\) marginal influence score for each node (row).
+   *
+   * Per row: L1 of absolute per-alternative smart marginals; representative
+   * smart \(p_0\) is that of the alternative with largest \(|\mathrm{marginal}|\).
    */
   [[nodiscard]] std::vector<InfluenceMarginalEntry> influence_marginal_smart(
-      const std::string& wrt_node,
       double delta = 1e-6,
+      const LimitMatrixOptions& options = {}) const;
+
+  /**
+   * @brief Fixed-distance total influence for each node (row).
+   *
+   * pyanp `influence_fixed` Total / Max Alt Change: L1 and max of absolute
+   * alternative-score diffs after moving \(p\) from 0.5 by @p delta.
+   */
+  [[nodiscard]] std::vector<InfluenceTotalEntry> influence_total(
+      double delta = 0.25,
       const LimitMatrixOptions& options = {}) const;
 
 private:

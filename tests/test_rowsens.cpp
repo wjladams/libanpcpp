@@ -138,4 +138,70 @@ TEST(RowSensTest, NetworkSubnetPriorityAtPChangesWithP) {
     }
   }
   EXPECT_TRUE(any_diff);
+
+  const auto nodes = net.node_names();
+  const auto rank = net.influence_rank();
+  ASSERT_EQ(rank.size(), nodes.size());
+  for (std::size_t i = 0; i < rank.size(); ++i) {
+    EXPECT_EQ(rank[i].name, nodes[i]);
+    EXPECT_GE(rank[i].rank_influence, 0.0);
+    EXPECT_LE(rank[i].rank_influence, 1.0);
+  }
+
+  const auto marg = net.influence_marginal_smart();
+  ASSERT_EQ(marg.size(), nodes.size());
+  for (std::size_t i = 0; i < marg.size(); ++i) {
+    EXPECT_EQ(marg[i].name, nodes[i]);
+    EXPECT_GT(marg[i].smart_p0, 0.0);
+    EXPECT_LT(marg[i].smart_p0, 1.0);
+    EXPECT_GE(marg[i].marginal, 0.0);
+  }
+
+  const auto total = net.influence_total(0.25);
+  ASSERT_EQ(total.size(), nodes.size());
+  bool any_total = false;
+  for (std::size_t i = 0; i < total.size(); ++i) {
+    EXPECT_EQ(total[i].name, nodes[i]);
+    EXPECT_GE(total[i].total_influence, 0.0);
+    EXPECT_GE(total[i].max_alt_change, 0.0);
+    EXPECT_LE(total[i].max_alt_change, total[i].total_influence + 1e-12);
+    if (total[i].total_influence > 1e-9) any_total = true;
+  }
+  EXPECT_TRUE(any_total);
+
+  // Total for Benefits should match L1 of |up - orig| from raw-like fixed delta.
+  const auto mid_pri = net.priority_at_p("Benefits", 0.5);
+  const auto up_pri = net.priority_at_p("Benefits", 0.75);
+  double expected_l1 = 0.0;
+  double expected_max = 0.0;
+  for (std::size_t i = 0; i < mid_pri.size(); ++i) {
+    const double d = std::abs(up_pri[i] - mid_pri[i]);
+    expected_l1 += d;
+    if (d > expected_max) expected_max = d;
+  }
+  const auto* benefits_total = [&]() -> const anpcpp::InfluenceTotalEntry* {
+    for (const auto& t : total) {
+      if (t.name == "Benefits") return &t;
+    }
+    return nullptr;
+  }();
+  ASSERT_NE(benefits_total, nullptr);
+  EXPECT_NEAR(benefits_total->total_influence, expected_l1, 1e-9);
+  EXPECT_NEAR(benefits_total->max_alt_change, expected_max, 1e-9);
+}
+
+TEST(RowSensTest, MatrixInfluenceTotalMatchesAbsDiffL1) {
+  const Matrix m = mat4();
+  const std::vector<std::size_t> alts = {2, 3};
+  const std::vector<std::size_t> rows = {0, 1};
+  const std::vector<std::string> names = {"R0", "R1"};
+  const auto totals = anpcpp::influence_total(m, rows, names, alts, 0.25, 0.5);
+  ASSERT_EQ(totals.size(), 2u);
+  EXPECT_EQ(totals[0].name, "R0");
+  EXPECT_GE(totals[0].total_influence, 0.0);
+  EXPECT_LE(totals[0].max_alt_change, totals[0].total_influence + 1e-12);
+
+  const auto one = anpcpp::influence_total_row(m, 0, alts, 0.25, 0.5);
+  EXPECT_NEAR(one.total_influence, totals[0].total_influence, 1e-12);
+  EXPECT_NEAR(one.max_alt_change, totals[0].max_alt_change, 1e-12);
 }

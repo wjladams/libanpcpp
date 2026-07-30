@@ -73,7 +73,7 @@ struct InfluenceRawEntry {
 };
 
 /**
- * @brief One alternative's rank-influence result.
+ * @brief Rank-influence result for one row (or one alternative under a fixed Wrt).
  */
 struct InfluenceRankEntry {
   std::string name;
@@ -82,12 +82,21 @@ struct InfluenceRankEntry {
 };
 
 /**
- * @brief One alternative's smart-\(p_0\) marginal influence.
+ * @brief Smart-\(p_0\) marginal influence for one row or alternative.
  */
 struct InfluenceMarginalEntry {
   std::string name;
   double marginal = 0.0;
   double smart_p0 = 0.5;
+};
+
+/**
+ * @brief Fixed-distance total influence for one row (pyanp influence_fixed Total).
+ */
+struct InfluenceTotalEntry {
+  std::string name;
+  double total_influence = 0.0;
+  double max_alt_change = 0.0;
 };
 
 /**
@@ -179,6 +188,34 @@ struct InfluenceMarginalEntry {
     const std::vector<std::size_t>& cluster_nodes = {},
     double error = 1e-5,
     int round_to_decimal = 5,
+    const LimitMatrixOptions& options = {});
+
+/**
+ * @brief Fixed-distance total influence for one row (L1 and max of abs diffs).
+ *
+ * Matches pyanp `influence_fixed` for a single row, then aggregates to Total /
+ * Max Alt Change as in the multi-row case.
+ */
+[[nodiscard]] InfluenceTotalEntry influence_total_row(
+    const Matrix& mat,
+    std::size_t row,
+    const std::vector<std::size_t>& influence_nodes,
+    double delta = 0.25,
+    double p0 = 0.5,
+    const std::vector<std::size_t>& cluster_nodes = {},
+    const LimitMatrixOptions& options = {});
+
+/**
+ * @brief Per-row total influence (pyanp multi-row `influence_fixed` Totals).
+ */
+[[nodiscard]] std::vector<InfluenceTotalEntry> influence_total(
+    const Matrix& mat,
+    const std::vector<std::size_t>& rows,
+    const std::vector<std::string>& row_names,
+    const std::vector<std::size_t>& influence_nodes,
+    double delta = 0.25,
+    double p0 = 0.5,
+    const std::vector<std::size_t>& cluster_nodes = {},
     const LimitMatrixOptions& options = {});
 
 }  // namespace anpcpp

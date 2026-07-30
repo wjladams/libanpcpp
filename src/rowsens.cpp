@@ -529,4 +529,59 @@ std::vector<InfluenceRankEntry> influence_rank(
   return out;
 }
 
+InfluenceTotalEntry influence_total_row(
+    const Matrix& mat,
+    std::size_t row,
+    const std::vector<std::size_t>& influence_nodes,
+    double delta,
+    double p0,
+    const std::vector<std::size_t>& cluster_nodes,
+    const LimitMatrixOptions& options) {
+  const auto nodes = default_influence(mat.rows(), row, influence_nodes);
+  const P0Mode mode = P0Mode::Direct(p0);
+  const Vector old_full =
+      priority_after_row_adjust(mat, row, p0, mode, cluster_nodes, options);
+  const double p_new = std::min(1.0, p0 + delta);
+  const Vector new_full =
+      priority_after_row_adjust(mat, row, p_new, mode, cluster_nodes, options);
+
+  Vector old_v = extract_nodes(old_full, nodes);
+  Vector new_v = extract_nodes(new_full, nodes);
+  normalize_l1_inplace(old_v);
+  normalize_l1_inplace(new_v);
+
+  InfluenceTotalEntry e;
+  e.total_influence = 0.0;
+  e.max_alt_change = 0.0;
+  for (std::size_t i = 0; i < nodes.size(); ++i) {
+    const double d = std::abs(new_v[i] - old_v[i]);
+    e.total_influence += d;
+    if (d > e.max_alt_change) e.max_alt_change = d;
+  }
+  return e;
+}
+
+std::vector<InfluenceTotalEntry> influence_total(
+    const Matrix& mat,
+    const std::vector<std::size_t>& rows,
+    const std::vector<std::string>& row_names,
+    const std::vector<std::size_t>& influence_nodes,
+    double delta,
+    double p0,
+    const std::vector<std::size_t>& cluster_nodes,
+    const LimitMatrixOptions& options) {
+  if (rows.size() != row_names.size()) {
+    throw std::invalid_argument("influence_total row name count mismatch");
+  }
+  std::vector<InfluenceTotalEntry> out;
+  out.reserve(rows.size());
+  for (std::size_t i = 0; i < rows.size(); ++i) {
+    InfluenceTotalEntry e = influence_total_row(
+        mat, rows[i], influence_nodes, delta, p0, cluster_nodes, options);
+    e.name = row_names[i];
+    out.push_back(std::move(e));
+  }
+  return out;
+}
+
 }  // namespace anpcpp

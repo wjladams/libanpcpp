@@ -1135,108 +1135,159 @@ bool alt_rank_change(const Vector& a,
 }  // namespace
 
 std::vector<InfluenceRankEntry> AnpNetwork::influence_rank(
-    const std::string& wrt_node,
     double error,
     int round_to_decimal,
     const LimitMatrixOptions& options) const {
   const P0Mode mode = P0Mode::Direct(0.5);
-  const Vector orig = priority_at_p(wrt_node, 0.5, mode, options);
+  const Vector gp = global_priority(options);
+  const std::vector<std::string> nodes = node_names();
   const std::vector<std::string> alts = alt_names();
 
-  auto search_upper = [&]() -> double {
-    double lower = 0.5;
-    double upper = 0.99999;
-    Vector lower_pri = priority_at_p(wrt_node, lower, mode, options);
-    Vector upper_pri = priority_at_p(wrt_node, upper, mode, options);
-    if (!alt_rank_change(lower_pri, upper_pri, round_to_decimal)) return 1.0;
-    while ((upper - lower) > error) {
-      const double mid = 0.5 * (upper + lower);
-      Vector mid_pri = priority_at_p(wrt_node, mid, mode, options);
-      if (alt_rank_change(lower_pri, mid_pri, round_to_decimal)) {
-        upper = mid;
-        upper_pri = std::move(mid_pri);
-      } else if (alt_rank_change(mid_pri, upper_pri, round_to_decimal)) {
-        lower = mid;
-        lower_pri = std::move(mid_pri);
-      } else {
-        break;
-      }
-    }
-    return (1.0 - upper) / 0.5;
-  };
-  auto search_lower = [&]() -> double {
-    double lower = 0.00001;
-    double upper = 0.5;
-    Vector lower_pri = priority_at_p(wrt_node, lower, mode, options);
-    Vector upper_pri = priority_at_p(wrt_node, upper, mode, options);
-    if (!alt_rank_change(lower_pri, upper_pri, round_to_decimal)) return 0.0;
-    while ((upper - lower) > error) {
-      const double mid = 0.5 * (upper + lower);
-      Vector mid_pri = priority_at_p(wrt_node, mid, mode, options);
-      if (alt_rank_change(lower_pri, mid_pri, round_to_decimal)) {
-        upper = mid;
-        upper_pri = std::move(mid_pri);
-      } else if (alt_rank_change(mid_pri, upper_pri, round_to_decimal)) {
-        lower = mid;
-        lower_pri = std::move(mid_pri);
-      } else {
-        break;
-      }
-    }
-    return lower / 0.5;
-  };
-
-  const double score = std::max(search_upper(), search_lower());
   std::vector<InfluenceRankEntry> out;
-  out.reserve(alts.size());
-  for (std::size_t i = 0; i < alts.size(); ++i) {
+  out.reserve(nodes.size());
+  for (std::size_t ni = 0; ni < nodes.size(); ++ni) {
+    const std::string& wrt = nodes[ni];
+
+    auto search_upper = [&]() -> double {
+      double lower = 0.5;
+      double upper = 0.99999;
+      Vector lower_pri = priority_at_p(wrt, lower, mode, options);
+      Vector upper_pri = priority_at_p(wrt, upper, mode, options);
+      if (!alt_rank_change(lower_pri, upper_pri, round_to_decimal)) return 1.0;
+      while ((upper - lower) > error) {
+        const double mid = 0.5 * (upper + lower);
+        Vector mid_pri = priority_at_p(wrt, mid, mode, options);
+        if (alt_rank_change(lower_pri, mid_pri, round_to_decimal)) {
+          upper = mid;
+          upper_pri = std::move(mid_pri);
+        } else if (alt_rank_change(mid_pri, upper_pri, round_to_decimal)) {
+          lower = mid;
+          lower_pri = std::move(mid_pri);
+        } else {
+          break;
+        }
+      }
+      return (1.0 - upper) / 0.5;
+    };
+    auto search_lower = [&]() -> double {
+      double lower = 0.00001;
+      double upper = 0.5;
+      Vector lower_pri = priority_at_p(wrt, lower, mode, options);
+      Vector upper_pri = priority_at_p(wrt, upper, mode, options);
+      if (!alt_rank_change(lower_pri, upper_pri, round_to_decimal)) return 0.0;
+      while ((upper - lower) > error) {
+        const double mid = 0.5 * (upper + lower);
+        Vector mid_pri = priority_at_p(wrt, mid, mode, options);
+        if (alt_rank_change(lower_pri, mid_pri, round_to_decimal)) {
+          upper = mid;
+          upper_pri = std::move(mid_pri);
+        } else if (alt_rank_change(mid_pri, upper_pri, round_to_decimal)) {
+          lower = mid;
+          lower_pri = std::move(mid_pri);
+        } else {
+          break;
+        }
+      }
+      return lower / 0.5;
+    };
+
     InfluenceRankEntry e;
-    e.name = alts[i];
-    e.original = i < orig.size() ? orig[i] : 0.0;
-    // Same group rank-change distance for each alt (network-level search).
-    e.rank_influence = score;
+    e.name = wrt;
+    e.original = ni < gp.size() ? gp[ni] : 0.0;
+    e.rank_influence =
+        alts.empty() ? 0.0 : std::max(search_upper(), search_lower());
     out.push_back(std::move(e));
   }
   return out;
 }
 
 std::vector<InfluenceMarginalEntry> AnpNetwork::influence_marginal_smart(
-    const std::string& wrt_node,
     double delta,
     const LimitMatrixOptions& options) const {
+  const std::vector<std::string> nodes = node_names();
   const std::vector<std::string> alts = alt_names();
   const P0Mode base = P0Mode::Direct(0.5);
-  const Vector at_p0 = priority_at_p(wrt_node, 0.5, base, options);
-  const Vector left =
-      priority_at_p(wrt_node, 0.5 - delta, base, options);
-  const Vector right =
-      priority_at_p(wrt_node, 0.5 + delta, base, options);
 
   std::vector<InfluenceMarginalEntry> out;
-  out.reserve(alts.size());
-  for (std::size_t i = 0; i < alts.size(); ++i) {
-    const double lval = (at_p0[i] - left[i]) / delta;   // LHS deriv approx
-    const double rval = (right[i] - at_p0[i]) / delta;  // RHS
-    double p0_smart = 0.5;
-    const double denom = lval + rval;
-    if (denom != 0.0) {
-      p0_smart = lval / denom;
-      p0_smart = std::min(0.999, std::max(0.001, p0_smart));
-    }
-    const Vector at_smart =
-        priority_at_p(wrt_node, p0_smart, base, options);
-    const Vector at_smart_r =
-        priority_at_p(wrt_node, p0_smart + delta, base, options);
-    const Vector at_smart_l =
-        priority_at_p(wrt_node, p0_smart - delta, base, options);
-    const double marg =
-        0.5 * ((at_smart_r[i] - at_smart[i]) / delta +
-               (at_smart[i] - at_smart_l[i]) / delta);
-
+  out.reserve(nodes.size());
+  for (const std::string& wrt : nodes) {
     InfluenceMarginalEntry e;
-    e.name = alts[i];
-    e.smart_p0 = p0_smart;
-    e.marginal = marg;
+    e.name = wrt;
+    e.marginal = 0.0;
+    e.smart_p0 = 0.5;
+    if (alts.empty() || delta <= 0.0) {
+      out.push_back(std::move(e));
+      continue;
+    }
+
+    const Vector at_p0 = priority_at_p(wrt, 0.5, base, options);
+    const Vector left =
+        priority_at_p(wrt, std::max(0.0, 0.5 - delta), base, options);
+    const Vector right =
+        priority_at_p(wrt, std::min(1.0, 0.5 + delta), base, options);
+
+    double sum_abs = 0.0;
+    double best_abs = -1.0;
+    double best_p0 = 0.5;
+    for (std::size_t i = 0; i < alts.size(); ++i) {
+      const double lval = (at_p0[i] - left[i]) / delta;
+      const double rval = (right[i] - at_p0[i]) / delta;
+      double p0_smart = 0.5;
+      const double denom = lval + rval;
+      if (denom != 0.0) {
+        p0_smart = lval / denom;
+        p0_smart = std::min(0.999, std::max(0.001, p0_smart));
+      }
+      const P0Mode smart_mode = P0Mode::Direct(p0_smart);
+      const double p_l = std::max(0.0, p0_smart - delta);
+      const double p_r = std::min(1.0, p0_smart + delta);
+      const Vector at_smart = priority_at_p(wrt, p0_smart, smart_mode, options);
+      const Vector at_smart_r = priority_at_p(wrt, p_r, smart_mode, options);
+      const Vector at_smart_l = priority_at_p(wrt, p_l, smart_mode, options);
+      const double d_r = (p_r > p0_smart) ? (p_r - p0_smart) : delta;
+      const double d_l = (p0_smart > p_l) ? (p0_smart - p_l) : delta;
+      const double marg =
+          0.5 * ((at_smart_r[i] - at_smart[i]) / d_r +
+                 (at_smart[i] - at_smart_l[i]) / d_l);
+      sum_abs += std::abs(marg);
+      if (std::abs(marg) > best_abs) {
+        best_abs = std::abs(marg);
+        best_p0 = p0_smart;
+      }
+    }
+    e.marginal = sum_abs;
+    e.smart_p0 = best_p0;
+    out.push_back(std::move(e));
+  }
+  return out;
+}
+
+std::vector<InfluenceTotalEntry> AnpNetwork::influence_total(
+    double delta,
+    const LimitMatrixOptions& options) const {
+  const std::vector<std::string> nodes = node_names();
+  const std::vector<std::string> alts = alt_names();
+  const P0Mode mode = P0Mode::Direct(0.5);
+  const double p_new = std::min(1.0, 0.5 + delta);
+
+  std::vector<InfluenceTotalEntry> out;
+  out.reserve(nodes.size());
+  for (const std::string& wrt : nodes) {
+    InfluenceTotalEntry e;
+    e.name = wrt;
+    e.total_influence = 0.0;
+    e.max_alt_change = 0.0;
+    if (alts.empty()) {
+      out.push_back(std::move(e));
+      continue;
+    }
+    const Vector orig = priority_at_p(wrt, 0.5, mode, options);
+    const Vector neu = priority_at_p(wrt, p_new, mode, options);
+    for (std::size_t i = 0; i < alts.size(); ++i) {
+      const double d = std::abs(neu[i] - orig[i]);
+      e.total_influence += d;
+      if (d > e.max_alt_change) e.max_alt_change = d;
+    }
     out.push_back(std::move(e));
   }
   return out;
