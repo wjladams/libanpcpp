@@ -205,7 +205,7 @@ Vector priority_after_row_adjust(const Matrix& mat,
   double old_sum = 1.0;
   double old_val = 0.0;
   if (normalize_to_orig) {
-    const Vector old_pri = priority_from_limit(calculus_limit(mat, options));
+    const Vector old_pri = priority_from_limit(compute_limit_matrix(mat, options));
     old_val = old_pri[row];
     old_sum = 0.0;
     for (std::size_t i = 0; i < old_pri.size(); ++i) {
@@ -213,7 +213,7 @@ Vector priority_after_row_adjust(const Matrix& mat,
     }
   }
   const Matrix adjusted = row_adjust(mat, row, p, p0mode, cluster_nodes);
-  Vector new_pri = priority_from_limit(calculus_limit(adjusted, options));
+  Vector new_pri = priority_from_limit(compute_limit_matrix(adjusted, options));
   if (normalize_to_orig) {
     const double row_pri = new_pri[row];
     new_pri[row] = 0.0;
@@ -248,7 +248,7 @@ Vector influence_marginal(const Matrix& mat,
                          : influence_nodes;
 
   Vector orig_pri =
-      extract_nodes(priority_from_limit(calculus_limit(mat, options)), nodes);
+      extract_nodes(priority_from_limit(compute_limit_matrix(mat, options)), nodes);
   normalize_l1_inplace(orig_pri);
 
   Vector left_deriv;
@@ -259,7 +259,7 @@ Vector influence_marginal(const Matrix& mat,
     const Matrix adj =
         row_adjust(mat, row, p0 - delta, mode, cluster_nodes);
     Vector pri =
-        extract_nodes(priority_from_limit(calculus_limit(adj, options)), nodes);
+        extract_nodes(priority_from_limit(compute_limit_matrix(adj, options)), nodes);
     normalize_l1_inplace(pri);
     left_deriv = Vector(nodes.size());
     for (std::size_t i = 0; i < nodes.size(); ++i) {
@@ -279,7 +279,7 @@ Vector influence_marginal(const Matrix& mat,
     const Matrix adj =
         row_adjust(mat, row, p0 + delta, mode, cluster_nodes);
     Vector pri =
-        extract_nodes(priority_from_limit(calculus_limit(adj, options)), nodes);
+        extract_nodes(priority_from_limit(compute_limit_matrix(adj, options)), nodes);
     normalize_l1_inplace(pri);
     right_deriv = Vector(nodes.size());
     for (std::size_t i = 0; i < nodes.size(); ++i) {

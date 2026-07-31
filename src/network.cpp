@@ -849,7 +849,7 @@ Matrix AnpNetwork::scaled_supermatrix() const {
 }
 
 Matrix AnpNetwork::limit_matrix(const LimitMatrixOptions& options) const {
-  return calculus_limit(scaled_supermatrix(), options);
+  return compute_limit_matrix(scaled_supermatrix(), options);
 }
 
 Vector AnpNetwork::global_priority(const LimitMatrixOptions& options) const {
@@ -1021,7 +1021,7 @@ std::map<std::string, double> AnpNetwork::priority_map_at_p(
   // Cluster-local scaling would pass cluster_row_indices(wrt_node).
   const Matrix adjusted = row_adjust(W, row, p, p0mode, {});
   const Vector gp =
-      priority_from_limit(calculus_limit(adjusted, options));
+      priority_from_limit(compute_limit_matrix(adjusted, options));
 
   if (has_subnet()) {
     const Vector synth = subnet_synthesize_from_global(gp, options);

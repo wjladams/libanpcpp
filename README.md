@@ -18,7 +18,7 @@ Numerical behavior is cross-checked against concepts from
 - `RatingsPrioritizer` for categorical or numeric rating columns (with declarative score interpreters)
 - `AnpNetwork` / `AnpCluster` / `AnpNode` with pairwise or ratings wiring per dest cluster
 - Unscaled / cluster-weighted / scaled supermatrices
-- Limit matrix (calculus method, with hierarchy short-circuit)
+- Limit matrix (calculus, new hierarchy, sinks; hierarchy short-circuit)
 - Recursive subnetworks with additive / multiplicative / custom synthesis
 - Versioned JSON save/load (`anpcpp` format v1; `node_prioritizers` with pairwise/ratings)
 
