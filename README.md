@@ -62,7 +62,7 @@ in [`docs/examples.md`](docs/examples.md) (published at
 include(FetchContent)
 FetchContent_Declare(anpcpp
   GIT_REPOSITORY https://github.com/wjadams/libanpcpp.git
-  GIT_TAG v0.1.0)
+  GIT_TAG v0.2.0)
 FetchContent_MakeAvailable(anpcpp)
 target_link_libraries(myapp PRIVATE anpcpp::anpcpp)
 ```
@@ -84,7 +84,7 @@ cmake --install build --prefix /path/to/prefix
 ```
 
 ```cmake
-find_package(anpcpp 0.1 REQUIRED)
+find_package(anpcpp 0.2 REQUIRED)
 target_link_libraries(myapp PRIVATE anpcpp::anpcpp)
 ```
 
