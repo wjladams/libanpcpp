@@ -278,6 +278,31 @@ json network_to_json_obj(const AnpNetwork& net) {
                                                            : "custom"},
       {"custom_expr", syn.custom_expr},
   };
+
+  const LimitMatrixOptions& lim = net.limit_matrix_options();
+  const char* method = "calculus";
+  switch (lim.method) {
+    case LimitMatrixMethod::NewHierarchy:
+      method = "newhierarchy";
+      break;
+    case LimitMatrixMethod::Sinks:
+      method = "sinks";
+      break;
+    case LimitMatrixMethod::Calculus:
+    default:
+      method = "calculus";
+      break;
+  }
+  j["limit_matrix"] = {
+      {"method", method},
+      {"error", lim.error},
+      {"max_iters", lim.max_iters},
+      {"use_hierarchy_formula", lim.use_hierarchy_formula},
+      {"start_pow", lim.start_pow},
+      {"with_limit", lim.with_limit},
+      {"max_count", lim.max_count},
+      {"straight_normalizer", lim.straight_normalizer},
+  };
   return j;
 }
 
@@ -367,6 +392,30 @@ void populate_network(AnpNetwork& net, const json& j) {
     }
     syn.custom_expr = j.at("synthesis").value("custom_expr", "");
     net.set_synthesis_options(std::move(syn));
+  }
+
+  if (j.contains("limit_matrix")) {
+    const json& lj = j.at("limit_matrix");
+    LimitMatrixOptions lim;
+    const std::string method = lj.value("method", "calculus");
+    if (method == "newhierarchy" || method == "new_hierarchy" ||
+        method == "hierarchy") {
+      lim.method = LimitMatrixMethod::NewHierarchy;
+    } else if (method == "sinks" || method == "sink") {
+      lim.method = LimitMatrixMethod::Sinks;
+    } else {
+      lim.method = LimitMatrixMethod::Calculus;
+    }
+    lim.error = lj.value("error", lim.error);
+    lim.max_iters = lj.value("max_iters", lim.max_iters);
+    lim.use_hierarchy_formula =
+        lj.value("use_hierarchy_formula", lim.use_hierarchy_formula);
+    lim.start_pow = lj.value("start_pow", lim.start_pow);
+    lim.with_limit = lj.value("with_limit", lim.with_limit);
+    lim.max_count = lj.value("max_count", lim.max_count);
+    lim.straight_normalizer =
+        lj.value("straight_normalizer", lim.straight_normalizer);
+    net.set_limit_matrix_options(std::move(lim));
   }
 }
 

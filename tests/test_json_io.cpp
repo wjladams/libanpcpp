@@ -75,3 +75,37 @@ TEST(JsonIoTest, RemoveNodeAndDisconnect) {
   EXPECT_EQ(net.nnodes(), 1u);
   EXPECT_EQ(net.find_node("Y"), nullptr);
 }
+
+TEST(JsonIoTest, RoundTripLimitMatrixOptions) {
+  AnpNetwork net;
+  net.add_cluster("C");
+  net.add_node("C", "A");
+  anpcpp::LimitMatrixOptions opt;
+  opt.method = anpcpp::LimitMatrixMethod::Sinks;
+  opt.with_limit = true;
+  opt.straight_normalizer = false;
+  opt.error = 1e-8;
+  opt.max_iters = 1234;
+  net.set_limit_matrix_options(opt);
+
+  auto loaded = network_from_json(network_to_json(net));
+  ASSERT_NE(loaded, nullptr);
+  const auto& got = loaded->limit_matrix_options();
+  EXPECT_EQ(got.method, anpcpp::LimitMatrixMethod::Sinks);
+  EXPECT_TRUE(got.with_limit);
+  EXPECT_FALSE(got.straight_normalizer);
+  EXPECT_NEAR(got.error, 1e-8, 1e-20);
+  EXPECT_EQ(got.max_iters, 1234u);
+}
+
+TEST(JsonIoTest, MissingLimitMatrixUsesDefaults) {
+  AnpNetwork net;
+  net.add_cluster("C");
+  net.add_node("C", "A");
+  auto loaded = network_from_json(network_to_json(net));
+  ASSERT_NE(loaded, nullptr);
+  // Fresh network serializes defaults; round-trip keeps Calculus.
+  EXPECT_EQ(loaded->limit_matrix_options().method,
+            anpcpp::LimitMatrixMethod::Calculus);
+  EXPECT_TRUE(loaded->limit_matrix_options().straight_normalizer);
+}

@@ -395,6 +395,21 @@ public:
     synthesis_ = std::move(options);
   }
 
+  /**
+   * @return Limit-matrix options used as the network default for calculations.
+   *
+   * Callers that want the network setting should pass
+   * @ref limit_matrix_options to @ref limit_matrix / @ref global_priority /
+   * sensitivity APIs. Explicit @c LimitMatrixOptions arguments still override.
+   */
+  [[nodiscard]] const LimitMatrixOptions& limit_matrix_options() const noexcept {
+    return limit_options_;
+  }
+  /** @brief Sets the network default limit-matrix options. */
+  void set_limit_matrix_options(LimitMatrixOptions options) {
+    limit_options_ = std::move(options);
+  }
+
   /** @brief Stores GUI layout hint (ignored by calculations). */
   void set_cluster_position(const std::string& name, double x, double y);
   /** @brief Stores node canvas position (ignored by calculations). */
@@ -551,6 +566,7 @@ private:
   std::string name_;
   std::string description_;
   SynthesisOptions synthesis_;
+  LimitMatrixOptions limit_options_;
   std::map<std::string, std::pair<double, double>> cluster_positions_;
   std::map<std::string, std::pair<double, double>> node_positions_;
 };
