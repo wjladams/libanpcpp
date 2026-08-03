@@ -1,6 +1,6 @@
 /**
  * @file json_io.hpp
- * @brief JSON serialization for ANP networks (format v1).
+ * @brief JSON serialization for ANP networks (format v1–v2).
  */
 
 #pragma once
@@ -28,7 +28,7 @@ public:
 /**
  * @brief Serializes a network (including subnetworks and layout hints) to JSON.
  * @param network Network to serialize.
- * @return JSON text (anpcpp format v1).
+ * @return JSON text (anpcpp format v2; v1 documents still load).
  */
 [[nodiscard]] std::string network_to_json(const AnpNetwork& network);
 

@@ -39,6 +39,7 @@ add_library(anpcpp STATIC
   src/inconsistency.cpp
   src/pairwise.cpp
   src/ratings.cpp
+  src/multiuser.cpp
   src/limit_matrix.cpp
   src/network.cpp
   src/synthesis.cpp

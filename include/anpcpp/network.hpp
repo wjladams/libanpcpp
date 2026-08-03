@@ -14,6 +14,7 @@
 
 #include "anpcpp/limit_matrix.hpp"
 #include "anpcpp/matrix.hpp"
+#include "anpcpp/multiuser.hpp"
 #include "anpcpp/pairwise.hpp"
 #include "anpcpp/ratings.hpp"
 #include "anpcpp/rowsens.hpp"
@@ -29,11 +30,23 @@ enum class NodePrioritizerKind { Pairwise, Ratings };
 
 /**
  * @brief Stores either pairwise or ratings judgments for one dest cluster.
+ *
+ * @c pairwise / @c ratings hold the *effective* judgments used by calc.
+ * Per-user tables live in @c user_pairwise / @c user_ratings; call
+ * @ref AnpNetwork::rebuild_effective_judgments after edits or scope changes.
  */
 struct NodePrioritizerSlot {
   NodePrioritizerKind kind = NodePrioritizerKind::Pairwise;
   PairwiseJudgments pairwise;
   RatingsPrioritizer ratings;
+  /** Per-participant pairwise (same alternatives as @c pairwise). */
+  std::map<std::string, PairwiseJudgments> user_pairwise;
+  /**
+   * Per-participant ratings votes. Shared scale (categories / interpreter /
+   * mode) is kept on @c ratings and synced into user tables when the scale
+   * changes.
+   */
+  std::map<std::string, RatingsPrioritizer> user_ratings;
 
   /** @return Alternative names from the active prioritizer. */
   [[nodiscard]] const std::vector<std::string>& alternatives() const;
@@ -41,12 +54,12 @@ struct NodePrioritizerSlot {
   [[nodiscard]] bool empty() const;
   /** @return True if @p name is an alternative in the active prioritizer. */
   [[nodiscard]] bool has_alternative(const std::string& name) const;
-  /** @brief Adds @p name to the active prioritizer. */
+  /** @brief Adds @p name to the active prioritizer and all user tables. */
   void add_alternative(const std::string& name, bool ignore_existing = false);
-  /** @brief Removes @p name from the active prioritizer. */
+  /** @brief Removes @p name from the active prioritizer and all user tables. */
   void remove_alternative(const std::string& name,
                           bool ignore_missing = false);
-  /** @brief Renames an alternative in the active prioritizer. */
+  /** @brief Renames an alternative in the active prioritizer and user tables. */
   void rename_alternative(const std::string& old_name,
                           const std::string& new_name);
   /** @return Local priorities for the unscaled column. */
@@ -55,9 +68,17 @@ struct NodePrioritizerSlot {
    * @brief Switches kind, preserving the alternative name list.
    *
    * Pairwise is reset to an identity diagonal; ratings start empty with
-   * numeric + Identity interpreter.
+   * numeric + Identity interpreter. User maps for the new kind are ensured
+   * empty shells matching alternatives.
    */
   void set_kind(NodePrioritizerKind new_kind);
+
+  /** @brief Ensures a user pairwise table exists (identity) for @p user_id. */
+  PairwiseJudgments& ensure_user_pairwise(const std::string& user_id);
+  /** @brief Ensures a user ratings table exists for @p user_id. */
+  RatingsPrioritizer& ensure_user_ratings(const std::string& user_id);
+  /** @brief Syncs categories/interpreter/mode from @c ratings into all users. */
+  void sync_ratings_scale_to_users();
 };
 
 /**
@@ -239,12 +260,23 @@ public:
 
   /** @brief Connects this cluster to @p dest (enables cluster pairwise). */
   void cluster_connect(AnpCluster* dest);
-  /** @return Cluster-level pairwise judgments. */
+  /** @return Cluster-level pairwise judgments (effective). */
   [[nodiscard]] PairwiseJudgments& cluster_pairwise() { return prioritizer_; }
   /** @brief Const overload of @ref cluster_pairwise. */
   [[nodiscard]] const PairwiseJudgments& cluster_pairwise() const {
     return prioritizer_;
   }
+  /** @return Per-user cluster pairwise tables. */
+  [[nodiscard]] std::map<std::string, PairwiseJudgments>& user_cluster_pairwise() {
+    return user_prioritizers_;
+  }
+  /** @brief Const overload. */
+  [[nodiscard]] const std::map<std::string, PairwiseJudgments>&
+  user_cluster_pairwise() const {
+    return user_prioritizers_;
+  }
+  /** @brief Ensures identity pairwise for @p user_id matching cluster alts. */
+  PairwiseJudgments& ensure_user_cluster_pairwise(const std::string& user_id);
 
 private:
   friend class AnpNetwork;
@@ -255,6 +287,7 @@ private:
   std::string description_;
   std::vector<std::unique_ptr<AnpNode>> nodes_;
   PairwiseJudgments prioritizer_;
+  std::map<std::string, PairwiseJudgments> user_prioritizers_;
 };
 
 /**
@@ -539,6 +572,104 @@ public:
       double delta = 0.25,
       const LimitMatrixOptions& options = {}) const;
 
+  // --- Multi-user judgments -------------------------------------------------
+
+  /** @return Model participants (root network owns the roster). */
+  [[nodiscard]] const std::vector<JudgmentParticipant>& participants() const {
+    return participants_;
+  }
+  /** @return Mutable participants list. */
+  [[nodiscard]] std::vector<JudgmentParticipant>& participants() {
+    return participants_;
+  }
+  /** @return Named judgment groups. */
+  [[nodiscard]] const std::vector<JudgmentGroup>& judgment_groups() const {
+    return groups_;
+  }
+  /** @return Mutable groups. */
+  [[nodiscard]] std::vector<JudgmentGroup>& judgment_groups() { return groups_; }
+  /** @return Current judgment session scope. */
+  [[nodiscard]] const JudgmentSession& judgment_session() const {
+    return session_;
+  }
+  /** @brief Sets session scope (does not rebuild; call @ref rebuild_effective_judgments). */
+  void set_judgment_session(JudgmentSession session) {
+    session_ = std::move(session);
+  }
+
+  /**
+   * @brief Adds a participant if @p id is new.
+   * @return Reference to the participant.
+   */
+  JudgmentParticipant& add_participant(std::string id,
+                                       std::string name,
+                                       std::string email = {});
+  /** @brief Removes participant and their judgment tables. */
+  void remove_participant(const std::string& id);
+  /** @return Participant pointer or nullptr. */
+  [[nodiscard]] JudgmentParticipant* find_participant(const std::string& id);
+  /** @brief Const overload. */
+  [[nodiscard]] const JudgmentParticipant* find_participant(
+      const std::string& id) const;
+
+  JudgmentGroup& add_judgment_group(std::string id,
+                                    std::string name,
+                                    std::vector<std::string> member_ids = {});
+  void remove_judgment_group(const std::string& id);
+  [[nodiscard]] JudgmentGroup* find_judgment_group(const std::string& id);
+  [[nodiscard]] const JudgmentGroup* find_judgment_group(
+      const std::string& id) const;
+
+  /**
+   * @brief Participant ids contributing under the current session.
+   *
+   * Average → all participants; Participant → that id; Group → members.
+   */
+  [[nodiscard]] std::vector<std::string> session_member_ids() const;
+
+  /**
+   * @brief Rebuilds all effective pairwise/ratings slots from user tables
+   *        and the current @ref judgment_session.
+   *
+   * Call after editing user judgments or changing scope. Subnetworks are
+   * rebuilt recursively.
+   */
+  void rebuild_effective_judgments();
+
+  /**
+   * @brief Ensures every participant has user tables on existing links;
+   *        migrates legacy effective-only data into @c default if needed.
+   */
+  void ensure_multiuser_initialized();
+
+  /**
+   * @brief Sets node pairwise for @p user_id (creates connections as needed).
+   */
+  void set_node_comparison_for(const std::string& user_id,
+                               const std::string& wrt_node,
+                               const std::string& a,
+                               const std::string& b,
+                               double value);
+
+  /** @brief Sets cluster pairwise for @p user_id. */
+  void set_cluster_comparison_for(const std::string& user_id,
+                                  const std::string& wrt_cluster,
+                                  const std::string& a,
+                                  const std::string& b,
+                                  double value);
+
+  /** @brief Sets categorical rating for @p user_id. */
+  void set_node_rating_for(const std::string& user_id,
+                           const std::string& wrt_node,
+                           const std::string& alt,
+                           const std::string& category_id);
+
+  /** @brief Sets numeric rating for @p user_id. */
+  void set_node_rating_value_for(const std::string& user_id,
+                                 const std::string& wrt_node,
+                                 const std::string& alt,
+                                 double raw);
+
 private:
   friend class AnpNode;
   friend class AnpCluster;
@@ -560,6 +691,9 @@ private:
   [[nodiscard]] Vector subnet_synthesize(
       const LimitMatrixOptions& options) const;
 
+  void rebuild_effective_judgments_local();
+  void migrate_effective_into_default_user();
+
   std::vector<std::unique_ptr<AnpCluster>> clusters_;
   AnpCluster* alts_cluster_ = nullptr;
   std::unordered_map<std::string, AnpNode*> node_index_;
@@ -569,6 +703,9 @@ private:
   LimitMatrixOptions limit_options_;
   std::map<std::string, std::pair<double, double>> cluster_positions_;
   std::map<std::string, std::pair<double, double>> node_positions_;
+  std::vector<JudgmentParticipant> participants_;
+  std::vector<JudgmentGroup> groups_;
+  JudgmentSession session_;
 };
 
 }  // namespace anpcpp

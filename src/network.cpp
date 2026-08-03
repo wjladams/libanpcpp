@@ -1,5 +1,6 @@
 #include "anpcpp/network.hpp"
 
+#include "anpcpp/multiuser.hpp"
 #include "anpcpp/rowsens.hpp"
 #include "anpcpp/synthesis.hpp"
 
@@ -35,8 +36,16 @@ void NodePrioritizerSlot::add_alternative(const std::string& name,
                                           bool ignore_existing) {
   if (kind == NodePrioritizerKind::Pairwise) {
     pairwise.add_alternative(name, ignore_existing);
+    for (auto& [_, pw] : user_pairwise) {
+      (void)_;
+      pw.add_alternative(name, /*ignore_existing=*/true);
+    }
   } else {
     ratings.add_alternative(name, ignore_existing);
+    for (auto& [_, rt] : user_ratings) {
+      (void)_;
+      rt.add_alternative(name, /*ignore_existing=*/true);
+    }
   }
 }
 
@@ -44,8 +53,16 @@ void NodePrioritizerSlot::remove_alternative(const std::string& name,
                                              bool ignore_missing) {
   if (kind == NodePrioritizerKind::Pairwise) {
     pairwise.remove_alternative(name, ignore_missing);
+    for (auto& [_, pw] : user_pairwise) {
+      (void)_;
+      pw.remove_alternative(name, /*ignore_missing=*/true);
+    }
   } else {
     ratings.remove_alternative(name, ignore_missing);
+    for (auto& [_, rt] : user_ratings) {
+      (void)_;
+      rt.remove_alternative(name, /*ignore_missing=*/true);
+    }
   }
 }
 
@@ -53,8 +70,20 @@ void NodePrioritizerSlot::rename_alternative(const std::string& old_name,
                                              const std::string& new_name) {
   if (kind == NodePrioritizerKind::Pairwise) {
     pairwise.rename_alternative(old_name, new_name);
+    for (auto& [_, pw] : user_pairwise) {
+      (void)_;
+      if (pw.has_alternative(old_name)) {
+        pw.rename_alternative(old_name, new_name);
+      }
+    }
   } else {
     ratings.rename_alternative(old_name, new_name);
+    for (auto& [_, rt] : user_ratings) {
+      (void)_;
+      if (rt.has_alternative(old_name)) {
+        rt.rename_alternative(old_name, new_name);
+      }
+    }
   }
 }
 
@@ -69,6 +98,8 @@ void NodePrioritizerSlot::set_kind(NodePrioritizerKind new_kind) {
   }
   const std::vector<std::string> alts = alternatives();
   kind = new_kind;
+  user_pairwise.clear();
+  user_ratings.clear();
   if (kind == NodePrioritizerKind::Pairwise) {
     pairwise = PairwiseJudgments(alts);
     ratings = RatingsPrioritizer{};
@@ -77,6 +108,53 @@ void NodePrioritizerSlot::set_kind(NodePrioritizerKind new_kind) {
     ratings.set_mode(RatingsPrioritizer::Mode::Numeric);
     ratings.set_interpreter(IdentityInterpreter{});
     pairwise = PairwiseJudgments{};
+  }
+}
+
+PairwiseJudgments& NodePrioritizerSlot::ensure_user_pairwise(
+    const std::string& user_id) {
+  auto it = user_pairwise.find(user_id);
+  if (it == user_pairwise.end()) {
+    it = user_pairwise
+             .emplace(user_id, PairwiseJudgments(pairwise.alternatives()))
+             .first;
+  } else {
+    for (const std::string& a : pairwise.alternatives()) {
+      it->second.add_alternative(a, /*ignore_existing=*/true);
+    }
+  }
+  return it->second;
+}
+
+RatingsPrioritizer& NodePrioritizerSlot::ensure_user_ratings(
+    const std::string& user_id) {
+  auto it = user_ratings.find(user_id);
+  if (it == user_ratings.end()) {
+    RatingsPrioritizer rt(ratings.alternatives());
+    rt.set_mode(ratings.mode());
+    rt.set_categories(ratings.categories());
+    rt.set_interpreter(ratings.interpreter());
+    it = user_ratings.emplace(user_id, std::move(rt)).first;
+  } else {
+    for (const std::string& a : ratings.alternatives()) {
+      it->second.add_alternative(a, /*ignore_existing=*/true);
+    }
+    it->second.set_mode(ratings.mode());
+    it->second.set_categories(ratings.categories());
+    it->second.set_interpreter(ratings.interpreter());
+  }
+  return it->second;
+}
+
+void NodePrioritizerSlot::sync_ratings_scale_to_users() {
+  for (auto& [_, rt] : user_ratings) {
+    (void)_;
+    rt.set_mode(ratings.mode());
+    rt.set_categories(ratings.categories());
+    rt.set_interpreter(ratings.interpreter());
+    for (const std::string& a : ratings.alternatives()) {
+      rt.add_alternative(a, /*ignore_existing=*/true);
+    }
   }
 }
 
@@ -325,6 +403,25 @@ void AnpCluster::cluster_connect(AnpCluster* dest) {
     throw std::invalid_argument("cannot connect to a null cluster");
   }
   prioritizer_.add_alternative(dest->name(), /*ignore_existing=*/true);
+  for (auto& [_, pw] : user_prioritizers_) {
+    (void)_;
+    pw.add_alternative(dest->name(), /*ignore_existing=*/true);
+  }
+}
+
+PairwiseJudgments& AnpCluster::ensure_user_cluster_pairwise(
+    const std::string& user_id) {
+  auto it = user_prioritizers_.find(user_id);
+  if (it == user_prioritizers_.end()) {
+    it = user_prioritizers_
+             .emplace(user_id, PairwiseJudgments(prioritizer_.alternatives()))
+             .first;
+  } else {
+    for (const std::string& a : prioritizer_.alternatives()) {
+      it->second.add_alternative(a, /*ignore_existing=*/true);
+    }
+  }
+  return it->second;
 }
 
 // ---------------------------------------------------------------------------
@@ -1291,6 +1388,361 @@ std::vector<InfluenceTotalEntry> AnpNetwork::influence_total(
     out.push_back(std::move(e));
   }
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// Multi-user
+// ---------------------------------------------------------------------------
+
+JudgmentParticipant& AnpNetwork::add_participant(std::string id,
+                                                 std::string name,
+                                                 std::string email) {
+  if (id.empty()) {
+    throw std::invalid_argument("participant id must be non-empty");
+  }
+  if (JudgmentParticipant* existing = find_participant(id)) {
+    existing->name = std::move(name);
+    if (!email.empty()) existing->email = std::move(email);
+    return *existing;
+  }
+  participants_.push_back(JudgmentParticipant{
+      std::move(id), std::move(name), std::move(email)});
+  return participants_.back();
+}
+
+void AnpNetwork::remove_participant(const std::string& id) {
+  participants_.erase(
+      std::remove_if(participants_.begin(), participants_.end(),
+                     [&](const JudgmentParticipant& p) { return p.id == id; }),
+      participants_.end());
+  for (JudgmentGroup& g : groups_) {
+    g.member_ids.erase(
+        std::remove(g.member_ids.begin(), g.member_ids.end(), id),
+        g.member_ids.end());
+  }
+  for (AnpCluster* c : clusters()) {
+    c->user_cluster_pairwise().erase(id);
+    for (AnpNode* n : c->nodes()) {
+      for (auto& [_, slot] : n->node_prioritizers_) {
+        (void)_;
+        slot.user_pairwise.erase(id);
+        slot.user_ratings.erase(id);
+      }
+    }
+  }
+  if (session_.kind == JudgmentScopeKind::Participant && session_.id == id) {
+    session_ = JudgmentSession{};
+  }
+}
+
+JudgmentParticipant* AnpNetwork::find_participant(const std::string& id) {
+  for (JudgmentParticipant& p : participants_) {
+    if (p.id == id) return &p;
+  }
+  return nullptr;
+}
+
+const JudgmentParticipant* AnpNetwork::find_participant(
+    const std::string& id) const {
+  for (const JudgmentParticipant& p : participants_) {
+    if (p.id == id) return &p;
+  }
+  return nullptr;
+}
+
+JudgmentGroup& AnpNetwork::add_judgment_group(
+    std::string id,
+    std::string name,
+    std::vector<std::string> member_ids) {
+  if (id.empty()) {
+    throw std::invalid_argument("group id must be non-empty");
+  }
+  if (JudgmentGroup* existing = find_judgment_group(id)) {
+    existing->name = std::move(name);
+    existing->member_ids = std::move(member_ids);
+    return *existing;
+  }
+  groups_.push_back(
+      JudgmentGroup{std::move(id), std::move(name), std::move(member_ids)});
+  return groups_.back();
+}
+
+void AnpNetwork::remove_judgment_group(const std::string& id) {
+  groups_.erase(
+      std::remove_if(groups_.begin(), groups_.end(),
+                     [&](const JudgmentGroup& g) { return g.id == id; }),
+      groups_.end());
+  if (session_.kind == JudgmentScopeKind::Group && session_.id == id) {
+    session_ = JudgmentSession{};
+  }
+}
+
+JudgmentGroup* AnpNetwork::find_judgment_group(const std::string& id) {
+  for (JudgmentGroup& g : groups_) {
+    if (g.id == id) return &g;
+  }
+  return nullptr;
+}
+
+const JudgmentGroup* AnpNetwork::find_judgment_group(
+    const std::string& id) const {
+  for (const JudgmentGroup& g : groups_) {
+    if (g.id == id) return &g;
+  }
+  return nullptr;
+}
+
+std::vector<std::string> AnpNetwork::session_member_ids() const {
+  std::vector<std::string> ids;
+  switch (session_.kind) {
+    case JudgmentScopeKind::Average:
+      for (const JudgmentParticipant& p : participants_) {
+        ids.push_back(p.id);
+      }
+      break;
+    case JudgmentScopeKind::Participant:
+      if (!session_.id.empty()) ids.push_back(session_.id);
+      break;
+    case JudgmentScopeKind::Group:
+      if (const JudgmentGroup* g = find_judgment_group(session_.id)) {
+        ids = g->member_ids;
+      }
+      break;
+  }
+  return ids;
+}
+
+void AnpNetwork::migrate_effective_into_default_user() {
+  const bool any_user_data = [&]() {
+    for (AnpCluster* c : clusters()) {
+      if (!c->user_cluster_pairwise().empty()) return true;
+      for (AnpNode* n : c->nodes()) {
+        for (const auto& [_, slot] : n->node_prioritizers_) {
+          (void)_;
+          if (!slot.user_pairwise.empty() || !slot.user_ratings.empty()) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }();
+  if (any_user_data) return;
+
+  if (participants_.empty()) {
+    add_participant(kDefaultParticipantId, "Decision maker");
+  }
+  const std::string uid = participants_.front().id;
+
+  for (AnpCluster* c : clusters()) {
+    if (!c->cluster_pairwise().empty()) {
+      PairwiseJudgments& up = c->ensure_user_cluster_pairwise(uid);
+      copy_pairwise_into(c->cluster_pairwise(), up);
+    }
+    for (AnpNode* n : c->nodes()) {
+      for (auto& [_, slot] : n->node_prioritizers_) {
+        (void)_;
+        if (slot.kind == NodePrioritizerKind::Pairwise &&
+            !slot.pairwise.empty()) {
+          PairwiseJudgments& up = slot.ensure_user_pairwise(uid);
+          copy_pairwise_into(slot.pairwise, up);
+        } else if (slot.kind == NodePrioritizerKind::Ratings &&
+                   !slot.ratings.empty()) {
+          RatingsPrioritizer& ur = slot.ensure_user_ratings(uid);
+          copy_ratings_votes_into(slot.ratings, ur);
+        }
+      }
+    }
+  }
+}
+
+void AnpNetwork::ensure_multiuser_initialized() {
+  migrate_effective_into_default_user();
+  for (const JudgmentParticipant& p : participants_) {
+    for (AnpCluster* c : clusters()) {
+      if (!c->cluster_pairwise().empty()) {
+        c->ensure_user_cluster_pairwise(p.id);
+      }
+      for (AnpNode* n : c->nodes()) {
+        for (auto& [_, slot] : n->node_prioritizers_) {
+          (void)_;
+          if (slot.kind == NodePrioritizerKind::Pairwise) {
+            slot.ensure_user_pairwise(p.id);
+          } else {
+            slot.ensure_user_ratings(p.id);
+          }
+        }
+      }
+    }
+  }
+}
+
+void AnpNetwork::rebuild_effective_judgments_local() {
+  const std::vector<std::string> members = session_member_ids();
+
+  for (AnpCluster* c : clusters()) {
+    if (c->cluster_pairwise().empty()) continue;
+    if (session_.kind == JudgmentScopeKind::Participant &&
+        members.size() == 1) {
+      auto it = c->user_cluster_pairwise().find(members[0]);
+      if (it != c->user_cluster_pairwise().end()) {
+        copy_pairwise_into(it->second, c->cluster_pairwise());
+      }
+    } else {
+      std::vector<const PairwiseJudgments*> inputs;
+      for (const std::string& uid : members) {
+        auto it = c->user_cluster_pairwise().find(uid);
+        if (it != c->user_cluster_pairwise().end()) {
+          inputs.push_back(&it->second);
+        }
+      }
+      aggregate_pairwise_geometric(inputs, c->cluster_pairwise());
+    }
+
+    for (AnpNode* n : c->nodes()) {
+      for (auto& [_, slot] : n->node_prioritizers_) {
+        (void)_;
+        if (slot.kind == NodePrioritizerKind::Pairwise) {
+          if (session_.kind == JudgmentScopeKind::Participant &&
+              members.size() == 1) {
+            auto it = slot.user_pairwise.find(members[0]);
+            if (it != slot.user_pairwise.end()) {
+              copy_pairwise_into(it->second, slot.pairwise);
+            }
+          } else {
+            std::vector<const PairwiseJudgments*> inputs;
+            for (const std::string& uid : members) {
+              auto it = slot.user_pairwise.find(uid);
+              if (it != slot.user_pairwise.end()) {
+                inputs.push_back(&it->second);
+              }
+            }
+            aggregate_pairwise_geometric(inputs, slot.pairwise);
+          }
+        } else {
+          if (session_.kind == JudgmentScopeKind::Participant &&
+              members.size() == 1) {
+            auto it = slot.user_ratings.find(members[0]);
+            if (it != slot.user_ratings.end()) {
+              copy_ratings_votes_into(it->second, slot.ratings);
+            }
+          } else {
+            std::vector<const RatingsPrioritizer*> inputs;
+            for (const std::string& uid : members) {
+              auto it = slot.user_ratings.find(uid);
+              if (it != slot.user_ratings.end()) {
+                inputs.push_back(&it->second);
+              }
+            }
+            if (inputs.size() == 1) {
+              copy_ratings_votes_into(*inputs[0], slot.ratings);
+            } else {
+              RatingsPrioritizer scale = slot.ratings;
+              aggregate_ratings_arithmetic(inputs, scale, slot.ratings);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+void AnpNetwork::rebuild_effective_judgments() {
+  rebuild_effective_judgments_local();
+  for (AnpNode* n : nodes()) {
+    if (n->has_subnetwork()) {
+      // Share roster/session into subnet for nested calc consistency.
+      AnpNetwork& sub = *n->subnetwork();
+      sub.participants_ = participants_;
+      sub.groups_ = groups_;
+      sub.session_ = session_;
+      sub.rebuild_effective_judgments();
+    }
+  }
+}
+
+void AnpNetwork::set_node_comparison_for(const std::string& user_id,
+                                         const std::string& wrt_node,
+                                         const std::string& a,
+                                         const std::string& b,
+                                         double value) {
+  AnpNode& wrt = node(wrt_node);
+  const AnpNode& na = node(a);
+  const AnpNode& nb = node(b);
+  if (na.cluster()->name() != nb.cluster()->name()) {
+    throw std::invalid_argument(
+        "node comparisons must be within the same destination cluster");
+  }
+  wrt.connect_to(const_cast<AnpNode*>(&na));
+  wrt.connect_to(const_cast<AnpNode*>(&nb));
+  const std::string dest = na.cluster()->name();
+  if (wrt.node_prioritizer_kind(dest) == NodePrioritizerKind::Ratings) {
+    throw std::logic_error(
+        "cannot set pairwise comparison on a ratings prioritizer for cluster " +
+        dest);
+  }
+  NodePrioritizerSlot* slot = wrt.node_prioritizer(dest);
+  if (slot == nullptr) {
+    throw std::logic_error("missing prioritizer after connect");
+  }
+  slot->ensure_user_pairwise(user_id).set_comparison(a, b, value);
+}
+
+void AnpNetwork::set_cluster_comparison_for(const std::string& user_id,
+                                            const std::string& wrt_cluster,
+                                            const std::string& a,
+                                            const std::string& b,
+                                            double value) {
+  AnpCluster& wrt = cluster(wrt_cluster);
+  AnpCluster& ca = cluster(a);
+  AnpCluster& cb = cluster(b);
+  wrt.cluster_connect(&ca);
+  wrt.cluster_connect(&cb);
+  wrt.ensure_user_cluster_pairwise(user_id).set_comparison(a, b, value);
+}
+
+void AnpNetwork::set_node_rating_for(const std::string& user_id,
+                                     const std::string& wrt_node,
+                                     const std::string& alt,
+                                     const std::string& category_id) {
+  AnpNode& wrt = node(wrt_node);
+  AnpNode& dest = node(alt);
+  wrt.connect_to(&dest);
+  const std::string dest_cluster = dest.cluster()->name();
+  if (wrt.node_prioritizer_kind(dest_cluster) != NodePrioritizerKind::Ratings) {
+    wrt.set_node_prioritizer_kind(dest_cluster, NodePrioritizerKind::Ratings);
+  }
+  NodePrioritizerSlot* slot = wrt.node_prioritizer(dest_cluster);
+  if (slot == nullptr) {
+    throw std::logic_error("missing ratings after kind switch");
+  }
+  slot->ratings.set_mode(RatingsPrioritizer::Mode::Categorical);
+  slot->sync_ratings_scale_to_users();
+  RatingsPrioritizer& ur = slot->ensure_user_ratings(user_id);
+  ur.set_mode(RatingsPrioritizer::Mode::Categorical);
+  ur.set_rating(alt, category_id);
+}
+
+void AnpNetwork::set_node_rating_value_for(const std::string& user_id,
+                                           const std::string& wrt_node,
+                                           const std::string& alt,
+                                           double raw) {
+  AnpNode& wrt = node(wrt_node);
+  AnpNode& dest = node(alt);
+  wrt.connect_to(&dest);
+  const std::string dest_cluster = dest.cluster()->name();
+  if (wrt.node_prioritizer_kind(dest_cluster) != NodePrioritizerKind::Ratings) {
+    wrt.set_node_prioritizer_kind(dest_cluster, NodePrioritizerKind::Ratings);
+  }
+  NodePrioritizerSlot* slot = wrt.node_prioritizer(dest_cluster);
+  if (slot == nullptr) {
+    throw std::logic_error("missing ratings after kind switch");
+  }
+  slot->ratings.set_mode(RatingsPrioritizer::Mode::Numeric);
+  slot->sync_ratings_scale_to_users();
+  RatingsPrioritizer& ur = slot->ensure_user_ratings(user_id);
+  ur.set_mode(RatingsPrioritizer::Mode::Numeric);
+  ur.set_value(alt, raw);
 }
 
 }  // namespace anpcpp

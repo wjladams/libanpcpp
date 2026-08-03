@@ -173,12 +173,49 @@ void ratings_from_json(RatingsPrioritizer& rt, const json& j) {
 }
 
 json prioritizer_to_json(const NodePrioritizerSlot& slot) {
+  json j;
   if (slot.kind == NodePrioritizerKind::Pairwise) {
-    json j = pairwise_to_json(slot.pairwise);
+    j = pairwise_to_json(slot.pairwise);
     j["type"] = "pairwise";
-    return j;
+    if (!slot.user_pairwise.empty()) {
+      json users = json::object();
+      for (const auto& [uid, pw] : slot.user_pairwise) {
+        users[uid] = pairwise_to_json(pw);
+      }
+      j["users"] = users;
+    }
+  } else {
+    j = ratings_to_json(slot.ratings);
+    if (!slot.user_ratings.empty()) {
+      json users = json::object();
+      for (const auto& [uid, rt] : slot.user_ratings) {
+        // Votes only in user entries (scale is on the parent ratings object).
+        json uj;
+        uj["alternatives"] = rt.alternatives();
+        uj["mode"] =
+            rt.mode() == RatingsPrioritizer::Mode::Categorical ? "categorical"
+                                                               : "numeric";
+        if (rt.mode() == RatingsPrioritizer::Mode::Categorical) {
+          json ratings = json::object();
+          for (const auto& alt : rt.alternatives()) {
+            const auto r = rt.rating(alt);
+            if (r.has_value()) ratings[alt] = *r;
+          }
+          uj["ratings"] = ratings;
+        } else {
+          json values = json::object();
+          for (const auto& alt : rt.alternatives()) {
+            const auto v = rt.value(alt);
+            if (v.has_value()) values[alt] = *v;
+          }
+          uj["values"] = values;
+        }
+        users[uid] = uj;
+      }
+      j["users"] = users;
+    }
   }
-  return ratings_to_json(slot.ratings);
+  return j;
 }
 
 void connect_alts(AnpNetwork& net,
@@ -221,6 +258,48 @@ void load_prioritizer_entry(AnpNetwork& net,
       pairwise_from_json(*pw, entry);
     }
   }
+
+  NodePrioritizerSlot* slot = node.node_prioritizer(dest_cluster);
+  if (slot == nullptr || !entry.contains("users")) return;
+
+  if (slot->kind == NodePrioritizerKind::Pairwise) {
+    for (auto it = entry.at("users").begin(); it != entry.at("users").end();
+         ++it) {
+      PairwiseJudgments& up = slot->ensure_user_pairwise(it.key());
+      pairwise_from_json(up, it.value());
+    }
+  } else {
+    for (auto it = entry.at("users").begin(); it != entry.at("users").end();
+         ++it) {
+      RatingsPrioritizer& ur = slot->ensure_user_ratings(it.key());
+      // Merge votes onto scale already on slot->ratings.
+      json vote_entry = it.value();
+      if (!vote_entry.contains("alternatives")) {
+        vote_entry["alternatives"] = slot->ratings.alternatives();
+      }
+      if (!vote_entry.contains("mode")) {
+        vote_entry["mode"] =
+            slot->ratings.mode() == RatingsPrioritizer::Mode::Categorical
+                ? "categorical"
+                : "numeric";
+      }
+      if (vote_entry["mode"] == "categorical" &&
+          !vote_entry.contains("categories")) {
+        json cats = json::array();
+        for (const auto& c : slot->ratings.categories()) {
+          cats.push_back(
+              {{"id", c.id}, {"label", c.label}, {"value", c.value}});
+        }
+        vote_entry["categories"] = cats;
+      }
+      if (vote_entry["mode"] == "numeric" &&
+          !vote_entry.contains("interpreter")) {
+        vote_entry["interpreter"] =
+            interpreter_to_json(slot->ratings.interpreter());
+      }
+      ratings_from_json(ur, vote_entry);
+    }
+  }
 }
 
 json network_to_json_obj(const AnpNetwork& net) {
@@ -242,6 +321,13 @@ json network_to_json_obj(const AnpNetwork& net) {
       cj["y"] = y;
     }
     cj["cluster_pairwise"] = pairwise_to_json(c->cluster_pairwise());
+    if (!c->user_cluster_pairwise().empty()) {
+      json users = json::object();
+      for (const auto& [uid, pw] : c->user_cluster_pairwise()) {
+        users[uid] = pairwise_to_json(pw);
+      }
+      cj["cluster_pairwise_users"] = users;
+    }
     cj["nodes"] = json::array();
     for (const AnpNode* n : c->nodes()) {
       json nj;
@@ -303,6 +389,39 @@ json network_to_json_obj(const AnpNetwork& net) {
       {"max_count", lim.max_count},
       {"straight_normalizer", lim.straight_normalizer},
   };
+
+  if (!net.participants().empty()) {
+    json parts = json::array();
+    for (const JudgmentParticipant& p : net.participants()) {
+      parts.push_back(
+          {{"id", p.id}, {"name", p.name}, {"email", p.email}});
+    }
+    j["participants"] = parts;
+  }
+  if (!net.judgment_groups().empty()) {
+    json groups = json::array();
+    for (const JudgmentGroup& g : net.judgment_groups()) {
+      groups.push_back(
+          {{"id", g.id}, {"name", g.name}, {"members", g.member_ids}});
+    }
+    j["groups"] = groups;
+  }
+  {
+    const JudgmentSession& s = net.judgment_session();
+    const char* kind = "average";
+    switch (s.kind) {
+      case JudgmentScopeKind::Average:
+        kind = "average";
+        break;
+      case JudgmentScopeKind::Participant:
+        kind = "participant";
+        break;
+      case JudgmentScopeKind::Group:
+        kind = "group";
+        break;
+    }
+    j["judgment_session"] = {{"kind", kind}, {"id", s.id}};
+  }
   return j;
 }
 
@@ -358,6 +477,14 @@ void populate_network(AnpNetwork& net, const json& j) {
     AnpCluster& cluster = net.cluster(cj.at("name").get<std::string>());
     if (cj.contains("cluster_pairwise")) {
       pairwise_from_json(cluster.cluster_pairwise(), cj.at("cluster_pairwise"));
+    }
+    if (cj.contains("cluster_pairwise_users")) {
+      for (auto it = cj.at("cluster_pairwise_users").begin();
+           it != cj.at("cluster_pairwise_users").end(); ++it) {
+        PairwiseJudgments& up =
+            cluster.ensure_user_cluster_pairwise(it.key());
+        pairwise_from_json(up, it.value());
+      }
     }
     for (const auto& nj : cj.at("nodes")) {
       AnpNode& node = net.node(nj.at("name").get<std::string>());
@@ -417,6 +544,39 @@ void populate_network(AnpNetwork& net, const json& j) {
         lj.value("straight_normalizer", lim.straight_normalizer);
     net.set_limit_matrix_options(std::move(lim));
   }
+
+  if (j.contains("participants")) {
+    for (const auto& pj : j.at("participants")) {
+      net.add_participant(pj.at("id").get<std::string>(),
+                          pj.value("name", pj.at("id").get<std::string>()),
+                          pj.value("email", ""));
+    }
+  }
+  if (j.contains("groups")) {
+    for (const auto& gj : j.at("groups")) {
+      net.add_judgment_group(
+          gj.at("id").get<std::string>(),
+          gj.value("name", gj.at("id").get<std::string>()),
+          gj.value("members", std::vector<std::string>{}));
+    }
+  }
+  if (j.contains("judgment_session")) {
+    JudgmentSession s;
+    const std::string kind =
+        j.at("judgment_session").value("kind", "average");
+    if (kind == "participant") {
+      s.kind = JudgmentScopeKind::Participant;
+    } else if (kind == "group") {
+      s.kind = JudgmentScopeKind::Group;
+    } else {
+      s.kind = JudgmentScopeKind::Average;
+    }
+    s.id = j.at("judgment_session").value("id", "");
+    net.set_judgment_session(std::move(s));
+  }
+
+  net.ensure_multiuser_initialized();
+  net.rebuild_effective_judgments();
 }
 
 }  // namespace
@@ -424,7 +584,7 @@ void populate_network(AnpNetwork& net, const json& j) {
 std::string network_to_json(const AnpNetwork& network) {
   json doc;
   doc["format"] = "anpcpp";
-  doc["version"] = 1;
+  doc["version"] = 2;
   doc["network"] = network_to_json_obj(network);
   return doc.dump(2);
 }
@@ -442,7 +602,8 @@ std::unique_ptr<AnpNetwork> network_from_json(const std::string& json_text) {
   if (doc.value("format", "") != "anpcpp") {
     throw JsonIoError("unsupported format (expected anpcpp)");
   }
-  if (doc.value("version", 1) != 1) {
+  const int version = doc.value("version", 1);
+  if (version != 1 && version != 2) {
     throw JsonIoError("unsupported anpcpp JSON version");
   }
 

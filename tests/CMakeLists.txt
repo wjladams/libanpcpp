@@ -24,12 +24,17 @@ add_executable(anpcpp_tests
   test_synthesis.cpp
   test_json_io.cpp
   test_rowsens.cpp
+  test_multiuser.cpp
 )
 
 target_link_libraries(anpcpp_tests
   PRIVATE
     anpcpp::anpcpp
     GTest::gtest_main
+)
+
+target_compile_definitions(anpcpp_tests PRIVATE
+  ANPCPP_SAMPLES_DIR="${CMAKE_SOURCE_DIR}/examples/models/samples"
 )
 
 include(GoogleTest)
