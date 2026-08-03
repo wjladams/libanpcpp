@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(anpcpp
-  VERSION 0.3.0
+  VERSION 0.4.0
   DESCRIPTION "Analytic Network Process computational library"
   LANGUAGES CXX
 )

@@ -62,7 +62,7 @@ in [`docs/examples.md`](docs/examples.md) (published at
 include(FetchContent)
 FetchContent_Declare(anpcpp
   GIT_REPOSITORY https://github.com/wjadams/libanpcpp.git
-  GIT_TAG v0.3.0)
+  GIT_TAG v0.4.0)
 FetchContent_MakeAvailable(anpcpp)
 target_link_libraries(myapp PRIVATE anpcpp::anpcpp)
 ```
