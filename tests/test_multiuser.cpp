@@ -150,7 +150,7 @@ TEST(Multiuser, V1StillLoads) {
 
 TEST(Multiuser, SamplePairwiseGolden) {
   const std::string path =
-      std::string(ANPCPP_SAMPLES_DIR) + "/18_multiuser_pairwise_ahp.json";
+      std::string(ANPCPP_SAMPLES_DIR) + "/18_multiuser_pairwise_ahp.anpstudio";
   auto net = load_network_file(path);
   ASSERT_NE(net, nullptr);
   EXPECT_NEAR(
@@ -160,7 +160,7 @@ TEST(Multiuser, SamplePairwiseGolden) {
 
 TEST(Multiuser, SampleRatingsGolden) {
   const std::string path =
-      std::string(ANPCPP_SAMPLES_DIR) + "/19_multiuser_ratings.json";
+      std::string(ANPCPP_SAMPLES_DIR) + "/19_multiuser_ratings.anpstudio";
   auto net = load_network_file(path);
   ASSERT_NE(net, nullptr);
   const auto* rt = net->node("Quality").node_ratings("Alternatives");
@@ -171,7 +171,7 @@ TEST(Multiuser, SampleRatingsGolden) {
 
 TEST(Multiuser, SamplePartialSkipsMissing) {
   const std::string path =
-      std::string(ANPCPP_SAMPLES_DIR) + "/21_multiuser_partial.json";
+      std::string(ANPCPP_SAMPLES_DIR) + "/21_multiuser_partial.anpstudio";
   auto net = load_network_file(path);
   ASSERT_NE(net, nullptr);
   EXPECT_NEAR(

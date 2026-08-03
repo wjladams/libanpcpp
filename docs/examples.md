@@ -19,7 +19,7 @@ Shared formatting helpers are in `examples/anp_print.hpp` (not a demo itself).
 | [hamburger_std](#hamburger_std) | Larger SuperDecisions reference market-share network |
 | [benefits_costs_subnet](#benefits_costs_subnet) | Control network with subnetworks and inverted Costs |
 | [ratings_demo](#ratings_demo) | Categorical and numeric ratings columns toward Alternatives |
-| export_sample_models | Writes starter JSON models under a chosen directory (see ANP Studio `samples/`) |
+| export_sample_models | Writes starter `.anpstudio` models under a chosen directory (see ANP Studio `samples/`) |
 
 ---
 
