@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "anpcpp/json_io.hpp"
+#include "anpcpp/multiuser.hpp"
 #include "anpcpp/network.hpp"
 #include "anpcpp/ratings.hpp"
 
@@ -838,6 +839,178 @@ AnpNetwork build_water_reservoir() {
   return net;
 }
 
+// ---- Multi-user samples (geometric pairwise / arithmetic ratings) ---------
+
+AnpNetwork build_multiuser_pairwise_ahp() {
+  // Hand-check: A vs B ratios 2, 8, 1/2 → geo mean 2.
+  AnpNetwork net(false);
+  net.set_name("Multi-user pairwise AHP");
+  net.set_description(
+      "Three participants; Goal→Alternatives pairwise. Overall average uses "
+      "geometric mean of ratios.");
+  net.add_cluster("Criteria");
+  net.add_cluster("Alternatives");
+  net.set_alternatives_cluster("Alternatives");
+  net.add_node("Criteria", "Goal");
+  for (const char* a : {"A", "B", "C"}) net.add_node("Alternatives", a);
+
+  net.add_participant("alice", "Alice Chen", "alice@example.com");
+  net.add_participant("bob", "Bob Rivera", "bob@example.com");
+  net.add_participant("carol", "Carol Ng", "carol@example.com");
+  net.add_judgment_group("exec", "Executives", {"alice", "bob"});
+
+  for (const char* a : {"A", "B", "C"}) net.node_connect("Goal", a);
+
+  auto fill = [&](const char* uid, double ab, double ac, double bc) {
+    net.set_node_comparison_for(uid, "Goal", "A", "B", ab);
+    net.set_node_comparison_for(uid, "Goal", "A", "C", ac);
+    net.set_node_comparison_for(uid, "Goal", "B", "C", bc);
+  };
+  fill("alice", 2.0, 3.0, 1.0);
+  fill("bob", 8.0, 3.0, 1.0);
+  fill("carol", 0.5, 3.0, 1.0);
+
+  net.set_judgment_session({JudgmentScopeKind::Average, {}});
+  net.rebuild_effective_judgments();
+  return net;
+}
+
+AnpNetwork build_multiuser_ratings() {
+  // A scores 0.2 and 0.8 → arithmetic mean 0.5.
+  AnpNetwork net(false);
+  net.set_name("Multi-user ratings");
+  net.set_description(
+      "Numeric ratings with Identity interpreter; overall average uses "
+      "arithmetic mean of scores.");
+  net.add_cluster("Criteria");
+  net.add_cluster("Alternatives");
+  net.set_alternatives_cluster("Alternatives");
+  net.add_node("Criteria", "Quality");
+  for (const char* a : {"A", "B", "C"}) net.add_node("Alternatives", a);
+
+  net.add_participant("alice", "Alice");
+  net.add_participant("bob", "Bob");
+  net.add_participant("carol", "Carol");
+  net.add_participant("diego", "Diego");  // no votes on A — omitted from mean
+
+  for (const char* a : {"A", "B", "C"}) net.node_connect("Quality", a);
+  net.set_node_prioritizer_kind("Quality", "Alternatives",
+                                NodePrioritizerKind::Ratings);
+  {
+    auto* slot = net.node("Quality").node_prioritizer("Alternatives");
+    slot->ratings.set_mode(RatingsPrioritizer::Mode::Numeric);
+    slot->ratings.set_interpreter(IdentityInterpreter{});
+    slot->sync_ratings_scale_to_users();
+  }
+
+  net.set_node_rating_value_for("alice", "Quality", "A", 0.2);
+  net.set_node_rating_value_for("bob", "Quality", "A", 0.8);
+  net.set_node_rating_value_for("carol", "Quality", "A", 0.5);
+  net.set_node_rating_value_for("alice", "Quality", "B", 0.4);
+  net.set_node_rating_value_for("bob", "Quality", "B", 0.6);
+  net.set_node_rating_value_for("carol", "Quality", "B", 0.5);
+  net.set_node_rating_value_for("alice", "Quality", "C", 0.9);
+  net.set_node_rating_value_for("bob", "Quality", "C", 0.7);
+
+  net.set_judgment_session({JudgmentScopeKind::Average, {}});
+  net.rebuild_effective_judgments();
+  return net;
+}
+
+AnpNetwork build_multiuser_mixed() {
+  AnpNetwork net(false);
+  net.set_name("Multi-user mixed pairwise + ratings");
+  net.set_description(
+      "Criteria compared pairwise (geometric mean); alts rated under Cost "
+      "(arithmetic mean). Executives group = Alice+Bob.");
+  net.add_cluster("Criteria");
+  net.add_cluster("Alternatives");
+  net.set_alternatives_cluster("Alternatives");
+  net.add_node("Criteria", "Goal");
+  net.add_node("Criteria", "Cost");
+  net.add_node("Criteria", "Quality");
+  for (const char* a : {"Plan1", "Plan2", "Plan3"})
+    net.add_node("Alternatives", a);
+
+  net.add_participant("alice", "Alice");
+  net.add_participant("bob", "Bob");
+  net.add_participant("carol", "Carol");
+  net.add_judgment_group("exec", "Executives", {"alice", "bob"});
+
+  net.node_connect("Goal", "Cost");
+  net.node_connect("Goal", "Quality");
+  net.set_node_comparison_for("alice", "Goal", "Cost", "Quality", 2.0);
+  net.set_node_comparison_for("bob", "Goal", "Cost", "Quality", 0.5);
+  net.set_node_comparison_for("carol", "Goal", "Cost", "Quality", 1.0);
+
+  for (const char* a : {"Plan1", "Plan2", "Plan3"}) {
+    net.node_connect("Cost", a);
+    net.node_connect("Quality", a);
+  }
+  net.set_node_prioritizer_kind("Cost", "Alternatives",
+                                NodePrioritizerKind::Ratings);
+  {
+    auto* slot = net.node("Cost").node_prioritizer("Alternatives");
+    slot->ratings.set_mode(RatingsPrioritizer::Mode::Numeric);
+    slot->ratings.set_interpreter(IdentityInterpreter{});
+    slot->sync_ratings_scale_to_users();
+  }
+  net.set_node_rating_value_for("alice", "Cost", "Plan1", 0.3);
+  net.set_node_rating_value_for("bob", "Cost", "Plan1", 0.5);
+  net.set_node_rating_value_for("carol", "Cost", "Plan1", 0.4);
+  net.set_node_rating_value_for("alice", "Cost", "Plan2", 0.6);
+  net.set_node_rating_value_for("bob", "Cost", "Plan2", 0.6);
+  net.set_node_rating_value_for("carol", "Cost", "Plan2", 0.6);
+
+  net.set_node_comparison_for("alice", "Quality", "Plan1", "Plan2", 3.0);
+  net.set_node_comparison_for("bob", "Quality", "Plan1", "Plan2", 1.0 / 3.0);
+  net.set_node_comparison_for("carol", "Quality", "Plan1", "Plan2", 1.0);
+  net.set_node_comparison_for("alice", "Quality", "Plan1", "Plan3", 2.0);
+  net.set_node_comparison_for("bob", "Quality", "Plan1", "Plan3", 2.0);
+  net.set_node_comparison_for("carol", "Quality", "Plan1", "Plan3", 2.0);
+  net.set_node_comparison_for("alice", "Quality", "Plan2", "Plan3", 1.0);
+  net.set_node_comparison_for("bob", "Quality", "Plan2", "Plan3", 1.0);
+  net.set_node_comparison_for("carol", "Quality", "Plan2", "Plan3", 1.0);
+
+  net.set_judgment_session({JudgmentScopeKind::Average, {}});
+  net.rebuild_effective_judgments();
+  return net;
+}
+
+AnpNetwork build_multiuser_partial() {
+  AnpNetwork net(false);
+  net.set_name("Multi-user partial coverage");
+  net.set_description(
+      "Sparse judgments: Carol has no A vs B; Diego empty. Aggregation skips "
+      "missing cells.");
+  net.add_cluster("Criteria");
+  net.add_cluster("Alternatives");
+  net.set_alternatives_cluster("Alternatives");
+  net.add_node("Criteria", "Goal");
+  for (const char* a : {"A", "B", "C"}) net.add_node("Alternatives", a);
+
+  net.add_participant("alice", "Alice");
+  net.add_participant("bob", "Bob");
+  net.add_participant("carol", "Carol");
+  net.add_participant("diego", "Diego");
+
+  for (const char* a : {"A", "B", "C"}) net.node_connect("Goal", a);
+
+  net.set_node_comparison_for("alice", "Goal", "A", "B", 4.0);
+  net.set_node_comparison_for("bob", "Goal", "A", "B", 1.0);
+  // carol skips A vs B
+  net.set_node_comparison_for("alice", "Goal", "A", "C", 2.0);
+  net.set_node_comparison_for("bob", "Goal", "A", "C", 2.0);
+  net.set_node_comparison_for("carol", "Goal", "A", "C", 2.0);
+  net.set_node_comparison_for("alice", "Goal", "B", "C", 1.0);
+  net.set_node_comparison_for("bob", "Goal", "B", "C", 1.0);
+  net.set_node_comparison_for("carol", "Goal", "B", "C", 1.0);
+
+  net.set_judgment_session({JudgmentScopeKind::Average, {}});
+  net.rebuild_effective_judgments();
+  return net;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -861,6 +1034,10 @@ int main(int argc, char** argv) {
   save(build_project_portfolio(), out, "15_ahp_project_portfolio.json");
   save(build_smartphone_ratings(), out, "16_ahp_smartphone_ratings.json");
   save(build_water_reservoir(), out, "17_anp_water_reservoir.json");
+  save(build_multiuser_pairwise_ahp(), out, "18_multiuser_pairwise_ahp.json");
+  save(build_multiuser_ratings(), out, "19_multiuser_ratings.json");
+  save(build_multiuser_mixed(), out, "20_multiuser_mixed.json");
+  save(build_multiuser_partial(), out, "21_multiuser_partial.json");
 
   std::cout << "Done. " << out << " contains starter models for ANP Studio.\n";
   return 0;
