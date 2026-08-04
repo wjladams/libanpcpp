@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <limits>
 #include <stdexcept>
 #include <utility>
 
@@ -1250,7 +1251,9 @@ std::vector<InfluenceRankEntry> AnpNetwork::influence_rank(
       double upper = 0.99999;
       Vector lower_pri = priority_at_p(wrt, lower, mode, options);
       Vector upper_pri = priority_at_p(wrt, upper, mode, options);
-      if (!alt_rank_change(lower_pri, upper_pri, round_to_decimal)) return 1.0;
+      // No rank change on [0.5, ~1] ⇒ zero upper-side influence (not 1.0:
+      // score is 1 - Δp/0.5, so "never changes" must be 0).
+      if (!alt_rank_change(lower_pri, upper_pri, round_to_decimal)) return 0.0;
       while ((upper - lower) > error) {
         const double mid = 0.5 * (upper + lower);
         Vector mid_pri = priority_at_p(wrt, mid, mode, options);
@@ -1291,8 +1294,14 @@ std::vector<InfluenceRankEntry> AnpNetwork::influence_rank(
     InfluenceRankEntry e;
     e.name = wrt;
     e.original = ni < gp.size() ? gp[ni] : 0.0;
-    e.rank_influence =
-        alts.empty() ? 0.0 : std::max(search_upper(), search_lower());
+    try {
+      e.rank_influence =
+          alts.empty() ? 0.0 : std::max(search_upper(), search_lower());
+    } catch (const std::exception&) {
+      // Extreme p searches can fail to converge the limit matrix for some
+      // pathological judgment sets; keep the row and mark influence unknown.
+      e.rank_influence = std::numeric_limits<double>::quiet_NaN();
+    }
     out.push_back(std::move(e));
   }
   return out;

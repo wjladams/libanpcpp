@@ -8,8 +8,13 @@
 // examples (SuperDecisions tutorials, Saaty textbook patterns). Judgment
 // values are illustrative unless noted as matching a published table.
 
+#include <algorithm>
+#include <cmath>
+#include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <iostream>
+#include <numeric>
 #include <string>
 #include <utility>
 #include <vector>
@@ -1011,6 +1016,137 @@ AnpNetwork build_multiuser_partial() {
   return net;
 }
 
+// Hamburger ANP with five full-vote participants (same structure as sample 01).
+AnpNetwork build_hamburger_multiuser() {
+  AnpNetwork net = build_hamburger();
+  net.set_name("Multi-user Hamburger market share");
+  net.set_description(
+      "Same SuperDecisions-style Hamburger network as sample 01, with five "
+      "participants who each cast a full set of pairwise votes: Standard "
+      "(tutorial local priorities), Wendy's / McDonald's / Burger King lovers "
+      "(brand bias plus mild deterministic noise for interesting sensitivity), "
+      "and Chaos (extreme scrambled priorities). Group average uses geometric "
+      "mean of ratios.");
+
+  net.add_participant("standard", "Standard", "");
+  net.add_participant("wendy_fan", "Wendy's Lover", "");
+  net.add_participant("mcd_fan", "McDonald's Lover", "");
+  net.add_participant("bk_fan", "Burger King Lover", "");
+  net.add_participant("chaos", "Chaos", "");
+
+  auto is_restaurant = [](const std::string& name) {
+    return name == "McDonalds" || name == "BurgerKing" || name == "Wendys";
+  };
+
+  struct Baseline {
+    bool cluster = false;
+    std::string wrt;
+    std::string dest_cluster;
+    std::vector<std::string> alts;
+    Vector pris;
+  };
+  std::vector<Baseline> baselines;
+  for (AnpNode* n : net.nodes()) {
+    for (AnpCluster* dc : net.clusters()) {
+      PairwiseJudgments* pw = n->node_pairwise(dc->name());
+      if (pw == nullptr || pw->size() < 2) continue;
+      baselines.push_back(
+          {false, n->name(), dc->name(), pw->alternatives(), pw->priorities()});
+    }
+  }
+  for (AnpCluster* c : net.clusters()) {
+    PairwiseJudgments& pw = c->cluster_pairwise();
+    if (pw.size() < 2) continue;
+    baselines.push_back(
+        {true, c->name(), {}, pw.alternatives(), pw.priorities()});
+  }
+
+  auto transform = [&](const std::string& profile, const std::string& key,
+                       const std::vector<std::string>& alts,
+                       const Vector& base) {
+    std::vector<double> p(alts.size());
+    for (std::size_t i = 0; i < alts.size(); ++i) p[i] = base[i];
+
+    if (profile == "standard") return p;
+
+    if (profile == "chaos") {
+      std::uint64_t h = static_cast<std::uint64_t>(std::hash<std::string>{}(key));
+      for (std::size_t i = 0; i < p.size(); ++i) {
+        const std::uint64_t nibble = (h >> ((i * 7) % 60)) & 0x3Fu;
+        const double raw = 0.04 + static_cast<double>(nibble) / 63.0;
+        p[i] = std::pow(raw, 2.5);
+        h = h * 6364136223846793005ULL + 1ULL;
+      }
+    } else {
+      // Brand fans: start from tutorial weights, add mild keyed noise, then
+      // boost the favorite restaurant when that set is being compared.
+      std::uint64_t h = static_cast<std::uint64_t>(
+          std::hash<std::string>{}(key + "|" + profile));
+      for (std::size_t i = 0; i < p.size(); ++i) {
+        const std::uint64_t nibble = (h >> ((i * 5) % 60)) & 0x3Fu;
+        const double u = static_cast<double>(nibble) / 63.0;  // [0, 1]
+        constexpr double kAmp = 0.28;  // ±28% multiplicative noise
+        p[i] = std::max(1e-9, p[i] * (1.0 + kAmp * (2.0 * u - 1.0)));
+        h = h * 6364136223846793005ULL + 1ULL;
+      }
+
+      const char* fav =
+          profile == "wendy_fan"
+              ? "Wendys"
+              : (profile == "mcd_fan" ? "McDonalds" : "BurgerKing");
+      const bool restaurant_set =
+          !alts.empty() &&
+          std::all_of(alts.begin(), alts.end(), is_restaurant);
+      if (restaurant_set) {
+        const auto fav_it = std::find(alts.begin(), alts.end(), fav);
+        if (fav_it != alts.end()) {
+          const std::size_t fi =
+              static_cast<std::size_t>(fav_it - alts.begin());
+          p[fi] *= (alts.size() == 2) ? 5.0 : 3.5;
+        }
+      }
+    }
+
+    double sum = std::accumulate(p.begin(), p.end(), 0.0);
+    if (sum <= 0.0) {
+      for (double& v : p) v = 1.0 / static_cast<double>(p.size());
+    } else {
+      for (double& v : p) v /= sum;
+    }
+    return p;
+  };
+
+  const std::vector<std::pair<std::string, std::string>> users = {
+      {"standard", "standard"}, {"wendy_fan", "wendy_fan"},
+      {"mcd_fan", "mcd_fan"},   {"bk_fan", "bk_fan"},
+      {"chaos", "chaos"},
+  };
+
+  for (const auto& [uid, profile] : users) {
+    for (const Baseline& b : baselines) {
+      const std::string key = b.wrt + "|" + b.dest_cluster;
+      const std::vector<double> p =
+          transform(profile, key + "|" + uid, b.alts, b.pris);
+      for (std::size_t i = 0; i < b.alts.size(); ++i) {
+        for (std::size_t j = i + 1; j < b.alts.size(); ++j) {
+          const double ratio = p[i] / p[j];
+          if (b.cluster) {
+            net.set_cluster_comparison_for(uid, b.wrt, b.alts[i], b.alts[j],
+                                           ratio);
+          } else {
+            net.set_node_comparison_for(uid, b.wrt, b.alts[i], b.alts[j],
+                                        ratio);
+          }
+        }
+      }
+    }
+  }
+
+  net.set_judgment_session({JudgmentScopeKind::Average, {}});
+  net.rebuild_effective_judgments();
+  return net;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -1038,6 +1174,7 @@ int main(int argc, char** argv) {
   save(build_multiuser_ratings(), out, "19_multiuser_ratings.anpstudio");
   save(build_multiuser_mixed(), out, "20_multiuser_mixed.anpstudio");
   save(build_multiuser_partial(), out, "21_multiuser_partial.anpstudio");
+  save(build_hamburger_multiuser(), out, "22_multiuser_hamburger.anpstudio");
 
   std::cout << "Done. " << out << " contains starter models for ANP Studio.\n";
   return 0;

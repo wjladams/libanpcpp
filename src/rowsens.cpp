@@ -413,8 +413,10 @@ std::vector<InfluenceRankEntry> influence_rank(
         priority_after_row_adjust(mat, row, lower, mode, cluster_nodes, options);
     Vector upper_pri =
         priority_after_row_adjust(mat, row, upper, mode, cluster_nodes, options);
+    // No rank change on [0.5, ~1] ⇒ zero upper-side influence (score is
+    // 1 - Δp/0.5; "never changes" must not return 1.0).
     if (!rank_change(lower_pri, upper_pri, nodes, round_to_decimal)) {
-      return 1.0;
+      return 0.0;
     }
     while ((upper - lower) > error) {
       const double mid = 0.5 * (upper + lower);
