@@ -573,10 +573,10 @@ public:
       const LimitMatrixOptions& options = {}) const;
 
   /**
-   * @brief Perspective of one node: lim \(p \to 1\) of row sensitivity.
+   * @brief Perspective of one node: limit as p approaches 1 of row sensitivity.
    *
-   * Same pipeline as @ref priority_at_p with \(p = 1\) (alternative scores,
-   * including subnet synthesis when present).
+   * Same pipeline as @ref priority_at_p near p = 1 (never exactly 1);
+   * see @ref perspective for the two-point / refine sampling.
    */
   [[nodiscard]] Vector perspective(
       const std::string& wrt_node,
@@ -584,7 +584,7 @@ public:
       const LimitMatrixOptions& options = {}) const;
 
   /**
-   * @brief Perspective matrix: column \(j\) is @ref perspective for node \(j\).
+   * @brief Perspective matrix: column j is @ref perspective for node j.
    *
    * Rows are @ref alt_names order; columns are @ref node_names order.
    */

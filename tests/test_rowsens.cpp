@@ -206,14 +206,22 @@ TEST(RowSensTest, MatrixInfluenceTotalMatchesAbsDiffL1) {
   EXPECT_NEAR(one.max_alt_change, totals[0].max_alt_change, 1e-12);
 }
 
-TEST(RowSensTest, PerspectiveMatchesPriorityAtP1) {
+TEST(RowSensTest, PerspectiveConvergesNearP1) {
   const Matrix m = mat4();
-  const auto at_p1 =
-      priority_after_row_adjust(m, 0, 1.0, P0Mode::Direct(0.5));
+  const auto at_coarse = priority_after_row_adjust(
+      m, 0, anpcpp::kPerspectivePCoarse, P0Mode::Direct(0.5));
+  const auto at_fine = priority_after_row_adjust(
+      m, 0, anpcpp::kPerspectivePFine, P0Mode::Direct(0.5));
   const auto persp = anpcpp::perspective(m, 0, P0Mode::Direct(0.5));
-  ASSERT_EQ(persp.size(), at_p1.size());
+  ASSERT_EQ(persp.size(), at_fine.size());
+
+  double linf = 0.0;
+  for (std::size_t i = 0; i < at_coarse.size(); ++i) {
+    linf = std::max(linf, std::abs(at_coarse[i] - at_fine[i]));
+  }
+  EXPECT_LE(linf, anpcpp::kPerspectiveAgreeTol);
   for (std::size_t i = 0; i < persp.size(); ++i) {
-    EXPECT_NEAR(persp[i], at_p1[i], 1e-12);
+    EXPECT_NEAR(persp[i], at_fine[i], 1e-12);
   }
 
   const auto full = anpcpp::perspective_matrix(m);
@@ -233,7 +241,7 @@ TEST(RowSensTest, PerspectiveMatchesPriorityAtP1) {
   }
 }
 
-TEST(RowSensTest, NetworkPerspectiveMatrixColumnsMatchPriorityAtP1) {
+TEST(RowSensTest, NetworkPerspectiveMatrixColumnsMatchNearP1) {
   using anpcpp::AnpNetwork;
   AnpNetwork net(/*create_alts_cluster=*/false);
   net.add_cluster("Goal");
@@ -281,19 +289,27 @@ TEST(RowSensTest, NetworkPerspectiveMatrixColumnsMatchPriorityAtP1) {
 
   for (std::size_t j = 0; j < nodes.size(); ++j) {
     const auto col = net.perspective(nodes[j]);
-    const auto at_p1 = net.priority_at_p(nodes[j], 1.0);
+    const auto at_fine =
+        net.priority_at_p(nodes[j], anpcpp::kPerspectivePFine);
+    const auto at_coarse =
+        net.priority_at_p(nodes[j], anpcpp::kPerspectivePCoarse);
     ASSERT_EQ(col.size(), alts.size());
-    ASSERT_EQ(at_p1.size(), alts.size());
+    ASSERT_EQ(at_fine.size(), alts.size());
+    double linf = 0.0;
     double sum = 0.0;
     for (std::size_t i = 0; i < alts.size(); ++i) {
       EXPECT_NEAR(P(i, j), col[i], 1e-12);
-      EXPECT_NEAR(col[i], at_p1[i], 1e-12);
+      linf = std::max(linf, std::abs(at_coarse[i] - at_fine[i]));
       sum += col[i];
+    }
+    EXPECT_LE(linf, anpcpp::kPerspectiveAgreeTol);
+    for (std::size_t i = 0; i < alts.size(); ++i) {
+      EXPECT_NEAR(col[i], at_fine[i], 1e-12);
     }
     EXPECT_NEAR(sum, 1.0, 1e-8);
   }
 
-  // p→1 for Benefits should differ from resting p=0.5 synthesis.
+  // Near-1 for Benefits should differ from resting p=0.5 synthesis.
   const auto base = net.priority_at_p("Benefits", 0.5);
   const auto persp_ben = net.perspective("Benefits");
   double moved = 0.0;

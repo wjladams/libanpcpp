@@ -278,9 +278,11 @@ struct InfluenceTotalEntry {
     const LimitMatrixOptions& options = {});
 
 /**
- * @brief Perspective of one row: lim \(p \to 1\) of row sensitivity.
+ * @brief Perspective of one row: limit as p approaches 1 of row sensitivity.
  *
- * Equivalent to @ref priority_after_row_adjust at \(p = 1\).
+ * Evaluates row sensitivity near p = 1 (never at exactly 1, which
+ * degenerates @ref row_adjust). Compares p = 1-1e-5 and p = 1-1e-6; if they
+ * disagree beyond 1e-6 (L-inf), refines at p = 1-1e-7.
  *
  * @param mat Scaled (column-stochastic) supermatrix.
  * @param row Row index (Wrt node).
@@ -298,9 +300,9 @@ struct InfluenceTotalEntry {
     bool normalize_to_orig = true);
 
 /**
- * @brief Perspective matrix: column \(j\) is @ref perspective for @p rows[j].
+ * @brief Perspective matrix: column j is @ref perspective for @p rows[j].
  *
- * Empty @p rows means every row index \(0..n-1\).
+ * Empty @p rows means every row index 0 .. n-1.
  *
  * @param mat Scaled (column-stochastic) supermatrix.
  * @param rows Row indices used as columns (empty = all rows).
@@ -316,5 +318,12 @@ struct InfluenceTotalEntry {
     const std::vector<std::size_t>& cluster_nodes = {},
     const LimitMatrixOptions& options = {},
     bool normalize_to_orig = true);
+
+/** Near-1 p values for limit-as-p-approaches-1 perspective (never exactly 1). */
+inline constexpr double kPerspectivePCoarse = 1.0 - 1e-5;
+inline constexpr double kPerspectivePFine = 1.0 - 1e-6;
+inline constexpr double kPerspectivePRefine = 1.0 - 1e-7;
+/** Max L-inf gap between coarse/fine before refining further. */
+inline constexpr double kPerspectiveAgreeTol = 1e-6;
 
 }  // namespace anpcpp

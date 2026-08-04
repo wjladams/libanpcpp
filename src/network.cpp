@@ -1393,7 +1393,16 @@ std::vector<InfluenceTotalEntry> AnpNetwork::influence_total(
 Vector AnpNetwork::perspective(const std::string& wrt_node,
                                const P0Mode& p0mode,
                                const LimitMatrixOptions& options) const {
-  return priority_at_p(wrt_node, 1.0, p0mode, options);
+  const Vector coarse =
+      priority_at_p(wrt_node, kPerspectivePCoarse, p0mode, options);
+  const Vector fine =
+      priority_at_p(wrt_node, kPerspectivePFine, p0mode, options);
+  double linf = 0.0;
+  for (std::size_t i = 0; i < coarse.size(); ++i) {
+    linf = std::max(linf, std::abs(coarse[i] - fine[i]));
+  }
+  if (linf <= kPerspectiveAgreeTol) return fine;
+  return priority_at_p(wrt_node, kPerspectivePRefine, p0mode, options);
 }
 
 Matrix AnpNetwork::perspective_matrix(const P0Mode& p0mode,

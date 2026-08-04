@@ -590,8 +590,19 @@ Vector perspective(const Matrix& mat,
                    const std::vector<std::size_t>& cluster_nodes,
                    const LimitMatrixOptions& options,
                    bool normalize_to_orig) {
-  return priority_after_row_adjust(mat, row, 1.0, p0mode, cluster_nodes,
-                                   options, normalize_to_orig);
+  const Vector coarse = priority_after_row_adjust(
+      mat, row, kPerspectivePCoarse, p0mode, cluster_nodes, options,
+      normalize_to_orig);
+  const Vector fine = priority_after_row_adjust(
+      mat, row, kPerspectivePFine, p0mode, cluster_nodes, options,
+      normalize_to_orig);
+  double linf = 0.0;
+  for (std::size_t i = 0; i < coarse.size(); ++i) {
+    linf = std::max(linf, std::abs(coarse[i] - fine[i]));
+  }
+  if (linf <= kPerspectiveAgreeTol) return fine;
+  return priority_after_row_adjust(mat, row, kPerspectivePRefine, p0mode,
+                                   cluster_nodes, options, normalize_to_orig);
 }
 
 Matrix perspective_matrix(const Matrix& mat,
