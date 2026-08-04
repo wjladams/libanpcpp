@@ -584,4 +584,44 @@ std::vector<InfluenceTotalEntry> influence_total(
   return out;
 }
 
+Vector perspective(const Matrix& mat,
+                   std::size_t row,
+                   const P0Mode& p0mode,
+                   const std::vector<std::size_t>& cluster_nodes,
+                   const LimitMatrixOptions& options,
+                   bool normalize_to_orig) {
+  return priority_after_row_adjust(mat, row, 1.0, p0mode, cluster_nodes,
+                                   options, normalize_to_orig);
+}
+
+Matrix perspective_matrix(const Matrix& mat,
+                          const std::vector<std::size_t>& rows,
+                          const P0Mode& p0mode,
+                          const std::vector<std::size_t>& cluster_nodes,
+                          const LimitMatrixOptions& options,
+                          bool normalize_to_orig) {
+  if (mat.rows() != mat.cols()) {
+    throw DimensionError("perspective_matrix requires a square matrix");
+  }
+  const std::size_t n = mat.rows();
+  std::vector<std::size_t> cols = rows;
+  if (cols.empty()) {
+    cols.resize(n);
+    for (std::size_t i = 0; i < n; ++i) cols[i] = i;
+  }
+  Matrix out(n, cols.size(), 0.0);
+  for (std::size_t j = 0; j < cols.size(); ++j) {
+    if (cols[j] >= n) {
+      throw std::out_of_range("perspective_matrix row out of range");
+    }
+    const Vector col =
+        perspective(mat, cols[j], p0mode, cluster_nodes, options,
+                    normalize_to_orig);
+    for (std::size_t i = 0; i < n; ++i) {
+      out(i, j) = col[i];
+    }
+  }
+  return out;
+}
+
 }  // namespace anpcpp

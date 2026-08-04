@@ -205,3 +205,100 @@ TEST(RowSensTest, MatrixInfluenceTotalMatchesAbsDiffL1) {
   EXPECT_NEAR(one.total_influence, totals[0].total_influence, 1e-12);
   EXPECT_NEAR(one.max_alt_change, totals[0].max_alt_change, 1e-12);
 }
+
+TEST(RowSensTest, PerspectiveMatchesPriorityAtP1) {
+  const Matrix m = mat4();
+  const auto at_p1 =
+      priority_after_row_adjust(m, 0, 1.0, P0Mode::Direct(0.5));
+  const auto persp = anpcpp::perspective(m, 0, P0Mode::Direct(0.5));
+  ASSERT_EQ(persp.size(), at_p1.size());
+  for (std::size_t i = 0; i < persp.size(); ++i) {
+    EXPECT_NEAR(persp[i], at_p1[i], 1e-12);
+  }
+
+  const auto full = anpcpp::perspective_matrix(m);
+  ASSERT_EQ(full.rows(), 4u);
+  ASSERT_EQ(full.cols(), 4u);
+  for (std::size_t i = 0; i < 4; ++i) {
+    EXPECT_NEAR(full(i, 0), persp[i], 1e-12);
+  }
+
+  const auto subset = anpcpp::perspective_matrix(m, {0, 2});
+  ASSERT_EQ(subset.rows(), 4u);
+  ASSERT_EQ(subset.cols(), 2u);
+  const auto col2 = anpcpp::perspective(m, 2);
+  for (std::size_t i = 0; i < 4; ++i) {
+    EXPECT_NEAR(subset(i, 0), persp[i], 1e-12);
+    EXPECT_NEAR(subset(i, 1), col2[i], 1e-12);
+  }
+}
+
+TEST(RowSensTest, NetworkPerspectiveMatrixColumnsMatchPriorityAtP1) {
+  using anpcpp::AnpNetwork;
+  AnpNetwork net(/*create_alts_cluster=*/false);
+  net.add_cluster("Goal");
+  net.add_cluster("Control");
+  net.add_node("Goal", "Choose");
+  net.add_node("Control", "Benefits");
+  net.add_node("Control", "Costs");
+  net.node_connect("Choose", "Benefits");
+  net.node_connect("Choose", "Costs");
+  net.set_node_comparison("Choose", "Benefits", "Costs", 2.0);
+
+  auto build = [](AnpNetwork& sub, const char* f1, const char* f2) {
+    sub.add_cluster("Factors");
+    sub.add_cluster("Alternatives");
+    sub.set_alternatives_cluster("Alternatives");
+    sub.add_node("Factors", f1);
+    sub.add_node("Factors", f2);
+    for (const char* a : {"Plan1", "Plan2", "Plan3"}) {
+      sub.add_node("Alternatives", a);
+    }
+    for (const std::string& f : {std::string(f1), std::string(f2)}) {
+      for (const char* a : {"Plan1", "Plan2", "Plan3"}) {
+        sub.node_connect(f, a);
+      }
+    }
+  };
+
+  AnpNetwork& ben = net.subnet("Benefits");
+  build(ben, "Performance", "Convenience");
+  ben.set_node_comparison("Performance", "Plan1", "Plan2", 2.0);
+  ben.set_node_comparison("Performance", "Plan1", "Plan3", 4.0);
+  ben.set_node_comparison("Performance", "Plan2", "Plan3", 2.0);
+
+  AnpNetwork& cost = net.subnet("Costs");
+  build(cost, "Money", "Risk");
+  cost.set_node_comparison("Money", "Plan3", "Plan2", 2.0);
+  cost.set_node_comparison("Money", "Plan3", "Plan1", 4.0);
+  net.node("Costs").set_invert(true);
+
+  const auto nodes = net.node_names();
+  const auto alts = net.alt_names();
+  const Matrix P = net.perspective_matrix();
+  ASSERT_EQ(P.rows(), alts.size());
+  ASSERT_EQ(P.cols(), nodes.size());
+
+  for (std::size_t j = 0; j < nodes.size(); ++j) {
+    const auto col = net.perspective(nodes[j]);
+    const auto at_p1 = net.priority_at_p(nodes[j], 1.0);
+    ASSERT_EQ(col.size(), alts.size());
+    ASSERT_EQ(at_p1.size(), alts.size());
+    double sum = 0.0;
+    for (std::size_t i = 0; i < alts.size(); ++i) {
+      EXPECT_NEAR(P(i, j), col[i], 1e-12);
+      EXPECT_NEAR(col[i], at_p1[i], 1e-12);
+      sum += col[i];
+    }
+    EXPECT_NEAR(sum, 1.0, 1e-8);
+  }
+
+  // p→1 for Benefits should differ from resting p=0.5 synthesis.
+  const auto base = net.priority_at_p("Benefits", 0.5);
+  const auto persp_ben = net.perspective("Benefits");
+  double moved = 0.0;
+  for (std::size_t i = 0; i < base.size(); ++i) {
+    moved += std::abs(persp_ben[i] - base[i]);
+  }
+  EXPECT_GT(moved, 1e-6);
+}

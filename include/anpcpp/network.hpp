@@ -572,6 +572,26 @@ public:
       double delta = 0.25,
       const LimitMatrixOptions& options = {}) const;
 
+  /**
+   * @brief Perspective of one node: lim \(p \to 1\) of row sensitivity.
+   *
+   * Same pipeline as @ref priority_at_p with \(p = 1\) (alternative scores,
+   * including subnet synthesis when present).
+   */
+  [[nodiscard]] Vector perspective(
+      const std::string& wrt_node,
+      const P0Mode& p0mode = P0Mode::Direct(0.5),
+      const LimitMatrixOptions& options = {}) const;
+
+  /**
+   * @brief Perspective matrix: column \(j\) is @ref perspective for node \(j\).
+   *
+   * Rows are @ref alt_names order; columns are @ref node_names order.
+   */
+  [[nodiscard]] Matrix perspective_matrix(
+      const P0Mode& p0mode = P0Mode::Direct(0.5),
+      const LimitMatrixOptions& options = {}) const;
+
   // --- Multi-user judgments -------------------------------------------------
 
   /** @return Model participants (root network owns the roster). */

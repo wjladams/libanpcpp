@@ -1390,6 +1390,26 @@ std::vector<InfluenceTotalEntry> AnpNetwork::influence_total(
   return out;
 }
 
+Vector AnpNetwork::perspective(const std::string& wrt_node,
+                               const P0Mode& p0mode,
+                               const LimitMatrixOptions& options) const {
+  return priority_at_p(wrt_node, 1.0, p0mode, options);
+}
+
+Matrix AnpNetwork::perspective_matrix(const P0Mode& p0mode,
+                                      const LimitMatrixOptions& options) const {
+  const std::vector<std::string> nodes = node_names();
+  const std::vector<std::string> alts = alt_names();
+  Matrix out(alts.size(), nodes.size(), 0.0);
+  for (std::size_t j = 0; j < nodes.size(); ++j) {
+    const Vector col = perspective(nodes[j], p0mode, options);
+    for (std::size_t i = 0; i < alts.size(); ++i) {
+      out(i, j) = i < col.size() ? col[i] : 0.0;
+    }
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // Multi-user
 // ---------------------------------------------------------------------------

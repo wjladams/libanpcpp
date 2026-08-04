@@ -277,4 +277,44 @@ struct InfluenceTotalEntry {
     const std::vector<std::size_t>& cluster_nodes = {},
     const LimitMatrixOptions& options = {});
 
+/**
+ * @brief Perspective of one row: lim \(p \to 1\) of row sensitivity.
+ *
+ * Equivalent to @ref priority_after_row_adjust at \(p = 1\).
+ *
+ * @param mat Scaled (column-stochastic) supermatrix.
+ * @param row Row index (Wrt node).
+ * @param p0mode Resting-value mode.
+ * @param cluster_nodes Cluster row indices (empty = full matrix).
+ * @param options Limit-matrix options.
+ * @param normalize_to_orig If true, rescale like @ref priority_after_row_adjust.
+ */
+[[nodiscard]] Vector perspective(
+    const Matrix& mat,
+    std::size_t row,
+    const P0Mode& p0mode = P0Mode::Direct(0.5),
+    const std::vector<std::size_t>& cluster_nodes = {},
+    const LimitMatrixOptions& options = {},
+    bool normalize_to_orig = true);
+
+/**
+ * @brief Perspective matrix: column \(j\) is @ref perspective for @p rows[j].
+ *
+ * Empty @p rows means every row index \(0..n-1\).
+ *
+ * @param mat Scaled (column-stochastic) supermatrix.
+ * @param rows Row indices used as columns (empty = all rows).
+ * @param p0mode Resting-value mode.
+ * @param cluster_nodes Cluster row indices (empty = full matrix).
+ * @param options Limit-matrix options.
+ * @param normalize_to_orig If true, rescale like @ref priority_after_row_adjust.
+ */
+[[nodiscard]] Matrix perspective_matrix(
+    const Matrix& mat,
+    const std::vector<std::size_t>& rows = {},
+    const P0Mode& p0mode = P0Mode::Direct(0.5),
+    const std::vector<std::size_t>& cluster_nodes = {},
+    const LimitMatrixOptions& options = {},
+    bool normalize_to_orig = true);
+
 }  // namespace anpcpp
