@@ -320,9 +320,9 @@ struct InfluenceTotalEntry {
     bool normalize_to_orig = true);
 
 /** Near-1 p values for limit-as-p-approaches-1 perspective (never exactly 1). */
-inline constexpr double kPerspectivePCoarse = 1.0 - 1e-5;
-inline constexpr double kPerspectivePFine = 1.0 - 1e-6;
-inline constexpr double kPerspectivePRefine = 1.0 - 1e-7;
+inline constexpr double kPerspectivePCoarse = 1.0 - 1e-6;
+inline constexpr double kPerspectivePFine = 1.0 - 1e-7;
+inline constexpr double kPerspectivePRefine = 1.0 - 1e-9;
 /** Max L-inf gap between coarse/fine before refining further. */
 inline constexpr double kPerspectiveAgreeTol = 1e-6;
 
